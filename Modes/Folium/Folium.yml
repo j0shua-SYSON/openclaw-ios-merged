@@ -74,7 +74,9 @@ targets:
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++23"
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Grape/System/include"
+        # Recursive (/**): melonDS quoted-includes headers that live in include subdirs
+        # (e.g. frontend/sem_timedwait.h referenced from frontend/sem_timedwait.cpp).
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Grape/System/include/**"
         SWIFT_OBJC_BRIDGING_HEADER: "Cores/Grape/System/include/melonDS/bridge.h"
 
   Kiwi:
