@@ -1,0 +1,72 @@
+name: Delta Build (CI validation)
+
+# Validates that upstream Delta (rileytestut/Delta @ pinned SHA) builds on our
+# macOS runner. This is the gating unknown before embedding Delta as a mode:
+# if the 8-core CocoaPods workspace doesn't build on Xcode 26 here, it can't be
+# linked into OpenClaw. Delta is cloned on the runner ONLY — nothing lands locally.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DELTA_REPO: https://github.com/rileytestut/Delta.git
+  DELTA_SHA: adee3c5c13a5fd944d0389cdbdd526cdcff2e6e6
+
+jobs:
+  delta:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - name: Select newest Xcode
+        run: |
+          set -e
+          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$latest" ] && sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+      - name: Clone Delta (recursive + LFS, SSH->HTTPS)
+        run: |
+          set -e
+          # Runner-only global config (ephemeral runner, not the user's machine).
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git lfs install
+          git clone "$DELTA_REPO" delta
+          cd delta
+          git checkout "$DELTA_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          git lfs pull || true
+          git submodule foreach --recursive 'git lfs pull || true'
+
+      - name: Show structure
+        run: |
+          cd delta
+          echo "=== submodule status (recursive) ==="
+          git submodule status --recursive | head -60
+          [ -d Pods ] && echo "Pods present" || echo "Pods MISSING"
+          echo "=== schemes ==="
+          xcodebuild -workspace Delta.xcworkspace -list 2>&1 | head -40
+
+      - name: Build Delta workspace (unsigned)
+        run: |
+          cd delta
+          set -o pipefail
+          xcodebuild build \
+            -workspace Delta.xcworkspace \
+            -scheme Delta \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+          rc=${PIPESTATUS[0]}
+          echo "::group::error summary"
+          grep -nE "error:|fatal error|BUILD (SUCCEEDED|FAILED)" build.log | tail -60 || true
+          echo "::endgroup::"
+          exit $rc
