@@ -1,0 +1,29 @@
+# Normalize all text to LF in the repo (builds run on macOS; CRLF breaks bash).
+* text=auto eol=lf
+
+# Explicit LF for scripts / config that the CI runner executes or parses.
+*.sh   text eol=lf
+*.bash text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.swift text eol=lf
+*.xcconfig text eol=lf
+*.entitlements text eol=lf
+*.plist text eol=lf
+*.pbxproj text eol=lf
+*.json text eol=lf
+
+# Known binaries — never touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.ttf  binary
+*.otf  binary
+*.sqlite binary
+*.dat  binary
+*.zip  binary
+*.p12  binary
+*.mobileprovision binary
+*.xcassets/** -text

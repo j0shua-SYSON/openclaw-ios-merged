@@ -1,0 +1,92 @@
+name: iOS Build (unsigned)
+
+# Builds OpenClaw into an UNSIGNED .ipa on a macOS runner.
+# Sign it afterwards with the "Re-sign IPA" workflow.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "MERGE_PLAN.md"
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          set -e
+          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -z "$latest" ] && latest=/Applications/Xcode.app
+          echo "Selecting: $latest"
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate build/Version.xcconfig
+        run: |
+          set -e
+          mkdir -p build
+          Y=$(date -u +%Y); M=$(date -u +%m); D=$(date -u +%d)
+          VER="${Y}.$((10#$M)).$((10#$D))"
+          BUILD=$(git rev-list --count HEAD)
+          COMMIT=$(git rev-parse --short HEAD)
+          TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          cat > build/Version.xcconfig <<EOF
+          OPENCLAW_IOS_VERSION = ${VER}
+          OPENCLAW_MARKETING_VERSION = ${VER}
+          OPENCLAW_BUILD_VERSION = ${BUILD}
+          OPENCLAW_GIT_COMMIT = ${COMMIT}
+          OPENCLAW_BUILD_TIMESTAMP = ${TS}
+          EOF
+          echo "--- build/Version.xcconfig ---"; cat build/Version.xcconfig
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project OpenClaw.xcodeproj \
+            -scheme OpenClaw \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/OpenClaw.xcarchive" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            ENABLE_APP_INTENTS_METADATA_GENERATION=NO
+
+      - name: Package unsigned IPA
+        run: |
+          set -e
+          APP=$(ls -d build/OpenClaw.xcarchive/Products/Applications/*.app | head -1)
+          echo "App bundle: $APP"
+          rm -rf build/Payload && mkdir -p build/Payload
+          cp -R "$APP" build/Payload/
+          (cd build && zip -qry OpenClaw-unsigned.ipa Payload)
+          ls -lh build/OpenClaw-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenClaw-unsigned
+          path: build/OpenClaw-unsigned.ipa
+          if-no-files-found: error

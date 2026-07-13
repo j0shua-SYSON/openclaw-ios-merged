@@ -1,0 +1,39 @@
+# --- Generated Xcode project (produced by `xcodegen generate`) ---
+/OpenClaw.xcodeproj/
+
+# --- Build / derived output ---
+/build/
+DerivedData/
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# --- SwiftPM ---
+.build/
+.swiftpm/
+Package.resolved
+
+# --- Xcode user state ---
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# --- Generated version/lint inputs (created per build) ---
+/build/Version.xcconfig
+SwiftSources.input.xcfilelist
+
+# --- Local signing material (NEVER commit) ---
+.local-signing.xcconfig
+LocalSigning.xcconfig
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+*.p8
+
+# --- macOS ---
+.DS_Store
+
+# --- Subagent / scratch ---
+.tmp/
