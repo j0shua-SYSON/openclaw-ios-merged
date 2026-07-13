@@ -33,10 +33,15 @@ gh secret set SIGNING_P12_PASSWORD --body "YOUR_P12_PASSWORD"
 ## Each time you want a signed build
 
 1. Let `iOS Build (unsigned)` finish (runs on every push, or trigger it manually).
+   It publishes the unsigned IPA to the **`ci-unsigned`** release.
 2. Run the **Re-sign IPA** workflow (Actions tab → *Re-sign IPA* → *Run workflow*).
-   - `build_run_id`: leave blank to sign the latest successful build, or paste a run ID.
    - `strip_extensions`: leave **on** unless your profile is a wildcard that also
      covers `…app.share`, `…app.activitywidget`, and `…app.watchkitapp`.
-3. Download the `OpenClaw-signed` artifact and install it (SideStore / your tool).
+3. Download `OpenClaw-signed.ipa` from the **`ci-signed`** release (Releases page)
+   and install it (SideStore / your tool).
+
+> Builds are delivered via **GitHub Releases** (`ci-unsigned` / `ci-signed`) rather
+> than Actions artifacts, because the account's Actions artifact-storage quota is
+> full. Releases use separate storage and give a stable download URL.
 
 Nothing is signed or stored locally on your machine; secrets live only in GitHub.

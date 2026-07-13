@@ -15,6 +15,9 @@ concurrency:
   group: ios-build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -84,9 +87,17 @@ jobs:
           (cd build && zip -qry OpenClaw-unsigned.ipa Payload)
           ls -lh build/OpenClaw-unsigned.ipa
 
-      - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenClaw-unsigned
-          path: build/OpenClaw-unsigned.ipa
-          if-no-files-found: error
+      - name: Publish unsigned IPA to a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="ci-unsigned"
+          # Rolling "latest unsigned build" release. Releases bypass the Actions
+          # artifact-storage quota and give a stable download page.
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" build/OpenClaw-unsigned.ipa \
+            --title "Unsigned CI build" \
+            --notes "Unsigned OpenClaw build from ${GITHUB_SHA}. Sign it with the 'Re-sign IPA' workflow." \
+            --prerelease
+          echo "Published unsigned IPA to release '$TAG'."

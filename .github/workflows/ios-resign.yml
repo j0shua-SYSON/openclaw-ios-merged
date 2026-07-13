@@ -1,25 +1,25 @@
 name: Re-sign IPA
 
-# Signs an unsigned OpenClaw IPA (from the "iOS Build (unsigned)" workflow) with
-# YOUR certificate + provisioning profile, and uploads a signed IPA you can install.
+# Signs the unsigned OpenClaw IPA (from the 'ci-unsigned' release produced by the
+# "iOS Build (unsigned)" workflow) with YOUR certificate + provisioning profile,
+# and publishes an installable signed IPA to the 'ci-signed' release.
 #
-# One-time setup (set these repo secrets):
-#   SIGNING_P12_BASE64            = base64 of your .p12 certificate
+# One-time setup (repo secrets):
+#   SIGNING_P12_BASE64             = base64 of your .p12 certificate
 #   SIGNING_MOBILEPROVISION_BASE64 = base64 of your .mobileprovision
-#   SIGNING_P12_PASSWORD          = the .p12 password (may be empty)
-# See RESIGN.md for the exact `gh secret set` commands (Windows + macOS/Linux).
+#   SIGNING_P12_PASSWORD           = the .p12 password (may be empty)
+# See RESIGN.md for the exact `gh secret set` commands.
 
 on:
   workflow_dispatch:
     inputs:
-      build_run_id:
-        description: "Run ID of the 'iOS Build (unsigned)' run to sign. Leave blank to use the latest successful build on this branch."
-        required: false
-        default: ""
       strip_extensions:
-        description: "Strip app extensions + Watch app before signing (recommended for single-profile sideload signing)."
+        description: "Strip app extensions + Watch app before signing (recommended unless your profile is a wildcard)."
         type: boolean
         default: true
+
+permissions:
+  contents: write
 
 jobs:
   resign:
@@ -36,19 +36,12 @@ jobs:
           if [ -z "$PROF" ]; then echo "::error::Missing secret SIGNING_MOBILEPROVISION_BASE64"; missing=1; fi
           exit $missing
 
-      - name: Download unsigned IPA
+      - name: Download unsigned IPA from release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          RID="${{ inputs.build_run_id }}"
-          if [ -z "$RID" ]; then
-            RID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "iOS Build (unsigned)" \
-              --branch "${{ github.ref_name }}" --status success --limit 1 \
-              --json databaseId --jq '.[0].databaseId')
-          fi
-          echo "Signing artifact from build run: $RID"
-          gh run download "$RID" --repo "$GITHUB_REPOSITORY" -n OpenClaw-unsigned -D incoming
+          gh release download ci-unsigned --repo "$GITHUB_REPOSITORY" --pattern '*.ipa' -D incoming --clobber
           ls -R incoming
 
       - name: Decode signing assets
@@ -123,9 +116,14 @@ jobs:
           (cd work && zip -qry ../OpenClaw-signed.ipa Payload)
           ls -lh OpenClaw-signed.ipa
 
-      - name: Upload signed IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenClaw-signed
-          path: OpenClaw-signed.ipa
-          if-no-files-found: error
+      - name: Publish signed IPA to a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="ci-signed"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" OpenClaw-signed.ipa \
+            --title "Signed OpenClaw build" \
+            --notes "Signed with your certificate on ${GITHUB_SHA}. Install via SideStore / your sideload tool."
+          echo "Published signed IPA to release '$TAG'."
