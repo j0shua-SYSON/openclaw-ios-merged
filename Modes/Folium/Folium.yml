@@ -1,0 +1,128 @@
+# XcodeGen spec for the Folium mode, built STANDALONE first (folium-build.yml).
+# Produces FoliumMode.framework (Folium's app layer) + 4 C++ core static libs.
+# Once green, this is merged into the main OpenClaw project and embedded.
+# Paths are relative to this file's directory (Modes/Folium).
+
+name: FoliumMode
+options:
+  bundleIdPrefix: ai.openclawfoundation.folium
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+packages:
+  SharedDependencies:
+    path: SharedDependencies
+  AntiqueKit:
+    path: Packages/AntiqueKit
+  TPCircularBuffer:
+    path: Packages/TPCircularBuffer
+  zstd:
+    url: https://github.com/jarrodnorwell/zstd
+    branch: main
+
+# ---- Shared settings for the C++ emulator cores (static libraries) ----
+targetTemplates:
+  Core:
+    type: library.static
+    platform: iOS
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_OBJC_INTEROP_MODE: objcxx
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GCC_C_LANGUAGE_STANDARD: gnu23
+        DEFINES_MODULE: YES
+    dependencies:
+      - package: SharedDependencies
+
+targets:
+  Grape:
+    templates: [Core]
+    sources: [Cores/Grape]
+    settings:
+      base:
+        CLANG_CXX_LANGUAGE_STANDARD: "gnu++23"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Grape/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Grape/System/include/melonDS/bridge.h"
+
+  Kiwi:
+    templates: [Core]
+    sources: [Cores/Kiwi]
+    settings:
+      base:
+        CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Kiwi/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Kiwi/System/include/gambatte/bridge.h"
+
+  Mandarine:
+    templates: [Core]
+    sources: [Cores/Mandarine]
+    settings:
+      base:
+        CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Mandarine/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Mandarine/System/include/avocado/bridge.h"
+
+  Tomato:
+    templates: [Core]
+    sources: [Cores/Tomato]
+    settings:
+      base:
+        CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Tomato/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Tomato/System/include/nba/bridge.hpp"
+
+  # ---- Folium app layer as an embeddable framework ----
+  FoliumMode:
+    type: framework
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "Info.plist"
+          - "App Icon.icon"
+          - "Base.lproj"
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_OBJC_INTEROP_MODE: objcxx
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        OTHER_LDFLAGS: "-ObjC"
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+    dependencies:
+      - target: Grape
+      - target: Kiwi
+      - target: Mandarine
+      - target: Tomato
+      - package: SharedDependencies
+      - package: TPCircularBuffer
+      - package: AntiqueKit
+        product: AntiqueKit
+      - package: AntiqueKit
+        product: ColourKit
+      - package: AntiqueKit
+        product: ConstraintKit
+      - package: AntiqueKit
+        product: ExtensionsKit
+      - package: AntiqueKit
+        product: FontKit
+      - package: AntiqueKit
+        product: OnboardingKit
+      - package: AntiqueKit
+        product: SettingsKit
+      - package: zstd
+        product: libzstd
+      - package: zstd
+        product: libseekable_format
+      - package: zstd
+        product: libzstdwrapper
+
+schemes:
+  FoliumMode:
+    build:
+      targets:
+        FoliumMode: all

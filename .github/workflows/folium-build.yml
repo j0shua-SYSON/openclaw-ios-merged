@@ -1,0 +1,56 @@
+name: Folium Build (framework validation)
+
+# Builds FoliumMode.framework + the 4 C++ core static libs STANDALONE from
+# Modes/Folium/Folium.yml, before wiring it into the main OpenClaw app. Keeps the
+# main build green while the emulator-core compilation is iterated to green here.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  folium:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          set -e
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$latest" ] && sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate FoliumMode project
+        run: |
+          set -e
+          cd Modes/Folium
+          xcodegen generate --spec Folium.yml
+          echo "=== generated ==="; ls -d *.xcodeproj
+
+      - name: Build FoliumMode.framework (unsigned)
+        run: |
+          cd Modes/Folium
+          set -o pipefail
+          xcodebuild build \
+            -project FoliumMode.xcodeproj \
+            -scheme FoliumMode \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+          rc=${PIPESTATUS[0]}
+          echo "::group::error summary"
+          grep -nE "error:|fatal error|BUILD (SUCCEEDED|FAILED)" build.log | tail -60 || true
+          echo "::endgroup::"
+          exit $rc

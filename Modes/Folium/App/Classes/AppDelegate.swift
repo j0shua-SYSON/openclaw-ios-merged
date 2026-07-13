@@ -7,7 +7,8 @@
 
 import UIKit
 
-@main
+// @main stripped: FoliumMode is embedded as a framework in OpenClaw, not its own app.
+// Its scene/bootstrap logic is invoked by the host when switching to the Folium mode.
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
