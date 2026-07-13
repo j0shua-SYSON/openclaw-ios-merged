@@ -76,7 +76,9 @@ public actor KiwiSystem {
     
     public var running: Bool {
         get {
-            kiwi.is_running()
+            // Explicit args: Swift C++ interop (Xcode 26) doesn't import the C++
+            // default arguments here. set=false means "query current state".
+            kiwi.is_running(false, false)
         }
         set {
             kiwi.is_running(true, newValue)
@@ -91,7 +93,7 @@ public actor KiwiSystem {
     
     public var paused: Bool {
         get {
-            kiwi.is_paused()
+            kiwi.is_paused(false, false)
         }
         set {
             kiwi.is_paused(true, newValue)
