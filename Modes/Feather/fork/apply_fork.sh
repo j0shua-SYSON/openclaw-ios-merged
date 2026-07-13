@@ -3,34 +3,38 @@
 # apply_fork.sh <feather-clone-dir> <fork-dir>
 #
 # Applies the OpenClaw FeatherMode fork to a fresh Feather clone on CI. Everything
-# it touches is inside the clone (runner-only) — nothing writes to the OpenClaw repo
-# or any local F: path. Mirrors Modes/Delta/fork/apply_fork.sh.
+# it touches is inside the clone (runner-only). Feather uses Xcode 16 synchronized
+# groups, so our NEW files go in a separate non-synced FeatherModule/ dir (added
+# explicitly by the Ruby); only in-place edits touch files inside the synced tree.
 #
 set -euo pipefail
 
 CLONE="$1"                              # e.g. $PWD/feather
 FORK="$2"                               # e.g. $PWD/openclaw/Modes/Feather/fork
-APP="$CLONE/Feather"                    # Feather's app source dir
+APP="$CLONE/Feather"                    # Feather's synced app source dir
+MOD="$CLONE/FeatherModule"              # our non-synced additions
 
 echo "== apply_fork(feather): clone=$CLONE fork=$FORK =="
 
-# 1. Drop in the factory, the ObjC boundary, umbrella, framework plist, and the
-#    data-isolation overlay.
-cp "$FORK/../App/FeatherHost.swift"       "$APP/FeatherHost.swift"
-cp "$FORK/FeatherLauncher.h"              "$APP/FeatherLauncher.h"
-cp "$FORK/FeatherLauncher.m"              "$APP/FeatherLauncher.m"
-cp "$FORK/Feather-umbrella.h"            "$APP/Feather.h"
-cp "$FORK/FeatherMode-Info.plist"        "$CLONE/FeatherMode-Info.plist"
-cp "$FORK/FileManager+documents.swift"   "$APP/Extensions/FileManager+documents.swift"
-echo "   copied FeatherHost.swift, FeatherLauncher.{h,m}, Feather.h, Info.plist, FileManager+documents.swift"
+# 1a. Our additions -> non-synced FeatherModule/ (added explicitly by the Ruby).
+mkdir -p "$MOD"
+cp "$FORK/../App/FeatherHost.swift" "$MOD/FeatherHost.swift"
+cp "$FORK/FeatherLauncher.h"        "$MOD/FeatherLauncher.h"
+cp "$FORK/FeatherLauncher.m"        "$MOD/FeatherLauncher.m"
+cp "$FORK/Feather-umbrella.h"       "$MOD/Feather.h"
+cp "$FORK/FeatherMode-Info.plist"   "$CLONE/FeatherMode-Info.plist"
+echo "   FeatherModule/: FeatherHost.swift, FeatherLauncher.{h,m}, Feather.h (umbrella)"
+
+# 1b. Data-isolation overlay -> in the synced tree (replaces original in place).
+cp "$FORK/FileManager+documents.swift" "$APP/Extensions/FileManager+documents.swift"
+echo "   overlaid FileManager+documents.swift (Documents/Feather/ isolation)"
 
 # 2. Neutralize the SwiftUI app entry — @main is illegal in a framework.
 perl -0pi -e 's/^\@main/\/\/ \@main (removed for FeatherMode framework)/m' "$APP/FeatherApp.swift"
 echo "   neutralized @main in FeatherApp.swift"
 
-# 3. Remove the `static` forward declaration from iconPoc.h — a static function
-#    decl in a modular umbrella header is rejected/warns. (Unused POC helper; its
-#    definition, if any, stays self-contained in iconPoc.m.)
+# 3. Remove the `static` forward declaration from iconPoc.h (illegal in a modular
+#    umbrella header; unused POC helper, definition stays self-contained in .m).
 perl -0pi -e 's/^\s*static\s+CGColorRef\s+FRCreateCGColorFromHex\(void\);\s*$//m' "$APP/Utilities/iconPoc.h"
 echo "   stripped static FRCreateCGColorFromHex decl from iconPoc.h"
 

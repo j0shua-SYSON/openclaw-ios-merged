@@ -4,17 +4,42 @@
 # convert_to_framework.rb  (Feather)
 #
 # Converts Feather's application target *in place* into an embeddable framework
-# (Feather.framework, module "Feather"), inside a fresh Feather clone on CI —
-# never against the local F: checkout. Mirrors Modes/Delta/fork.
+# (Feather.framework, module "Feather"), inside a fresh Feather clone on CI.
+#
+# Feather's project uses Xcode 16 "file system synchronized groups"
+# (PBXFileSystemSynchronizedRootGroup). xcodeproj 1.28.1 chokes opening it because
+# a synchronized-group membership exception points at a Resources build phase and
+# the gem only whitelists Sources/CopyFiles. We monkey-patch that whitelist so the
+# project opens, then make MINIMAL edits: flip the target to a framework, add our
+# own files (which live OUTSIDE the synced folder, so no double-membership), and
+# set build settings. We never mutate the synced groups themselves.
 #
 # Usage: ruby convert_to_framework.rb <path-to-Feather.xcodeproj>
 
 require 'xcodeproj'
 
+# --- Monkey-patch: allow more build-phase ISAs in the synchronized-group
+#     membership exception set so Project.open succeeds on Xcode 16 projects. ----
+begin
+  O = Xcodeproj::Project::Object
+  if O.const_defined?(:PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet)
+    klass = O.const_get(:PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet)
+    extra = %i[PBXResourcesBuildPhase PBXHeadersBuildPhase PBXFrameworksBuildPhase]
+            .map { |n| O.const_get(n) if O.const_defined?(n) }.compact
+    klass.to_one_attributes.each do |attr|
+      next unless attr.name == :build_phase
+      attr.classes.concat(extra.reject { |c| attr.classes.include?(c) })
+    end
+    puts "  (monkey-patched synchronized-group exception set: #{extra.map(&:isa).join(', ')})"
+  end
+rescue StandardError => e
+  warn "  WARNING: synchronized-group monkey-patch failed: #{e.class}: #{e.message}"
+end
+
 project_path = ARGV[0] || 'Feather.xcodeproj'
 project = Xcodeproj::Project.open(project_path)
 
-target = project.targets.find { |t| t.name == 'Feather' && t.product_type.include?('application') }
+target = project.targets.find { |t| t.name == 'Feather' && t.product_type.to_s.include?('application') }
 target ||= project.targets.find { |t| t.name == 'Feather' }
 raise "Feather app target not found in #{project_path}" unless target
 
@@ -29,6 +54,12 @@ ref.explicit_file_type = 'wrapper.framework'
 ref.include_in_index = '0'
 
 # --- 2. Build settings on every configuration --------------------------------
+header_paths = ['$(inherited)',
+                '$(SRCROOT)/FeatherModule',
+                '$(SRCROOT)/Feather',
+                '$(SRCROOT)/Feather/Utilities',
+                '$(SRCROOT)/Feather/Utilities/MachO']
+
 target.build_configurations.each do |config|
   s = config.build_settings
   s['PRODUCT_NAME'] = 'Feather'
@@ -43,6 +74,7 @@ target.build_configurations.each do |config|
   s['ENABLE_BITCODE'] = 'NO'
   s['DYLIB_INSTALL_NAME_BASE'] = '@rpath'
   s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/Frameworks', '@loader_path/Frameworks']
+  s['HEADER_SEARCH_PATHS'] = header_paths
 
   # Frameworks cannot use an ObjC bridging header — the umbrella header replaces it.
   s.delete('SWIFT_OBJC_BRIDGING_HEADER')
@@ -57,46 +89,36 @@ target.build_configurations.each do |config|
   s.delete('PROVISIONING_PROFILE_SPECIFIER')
 end
 
-# --- 3. Promote the bridging-header ObjC headers + umbrella to Public ---------
-headers_phase = target.headers_build_phase
+# --- 3. Add our files (all under the non-synced FeatherModule/ dir) -----------
+group = project.main_group.find_subpath('FeatherModule', true)
+group.set_source_tree('SOURCE_ROOT')
 
-%w[MachOUtils.h iconPoc.h].each do |name|
-  file_ref = project.files.find { |f| f.path && File.basename(f.path) == name }
-  unless file_ref
-    warn "  WARNING: header #{name} not found; skipping"
-    next
-  end
-  bf = headers_phase.files.find { |x| x.file_ref == file_ref } || headers_phase.add_file_reference(file_ref)
-  bf.settings = { 'ATTRIBUTES' => ['Public'] }
-  puts "  public header: #{name}"
-end
-
-# Umbrella header (apply_fork.sh copied it to Feather/Feather.h).
-umbrella = project.files.find { |f| f.path && File.basename(f.path) == 'Feather.h' }
-umbrella ||= project.main_group.new_reference('Feather/Feather.h')
-ubf = headers_phase.files.find { |x| x.file_ref == umbrella } || headers_phase.add_file_reference(umbrella)
-ubf.settings = { 'ATTRIBUTES' => ['Public'] }
-puts '  public header: Feather.h (umbrella)'
-
-# FeatherLauncher.h — public header (OpenClaw's UIKit-only entry point).
-launcher_h = project.files.find { |f| f.path && File.basename(f.path) == 'FeatherLauncher.h' }
-launcher_h ||= project.main_group.new_reference('Feather/FeatherLauncher.h')
-lbf = headers_phase.files.find { |x| x.file_ref == launcher_h } || headers_phase.add_file_reference(launcher_h)
-lbf.settings = { 'ATTRIBUTES' => ['Public'] }
-puts '  public header: FeatherLauncher.h'
-
-# --- 4. Add FeatherHost.swift + FeatherLauncher.m to the compile sources ------
-{ 'FeatherHost.swift' => 'Feather/FeatherHost.swift',
-  'FeatherLauncher.m' => 'Feather/FeatherLauncher.m' }.each do |base, path|
-  fref = project.files.find { |f| f.path && File.basename(f.path) == base }
-  fref ||= project.main_group.new_reference(path)
-  unless target.source_build_phase.files.any? { |bf| bf.file_ref == fref }
-    target.source_build_phase.add_file_reference(fref)
+def add_source(project, group, target, path, base)
+  ref = project.files.find { |f| f.path == path } || group.new_reference(path)
+  ref.set_source_tree('SOURCE_ROOT')
+  unless target.source_build_phase.files.any? { |bf| bf.file_ref == ref }
+    target.source_build_phase.add_file_reference(ref)
   end
   puts "  source: #{base}"
+  ref
 end
 
-# --- 5. Drop the app's "Embed Frameworks" copy phase (cores go to OpenClaw) ---
+def add_public_header(project, group, target, path, base)
+  ref = project.files.find { |f| f.path == path } || group.new_reference(path)
+  ref.set_source_tree('SOURCE_ROOT')
+  hp = target.headers_build_phase
+  bf = hp.files.find { |x| x.file_ref == ref } || hp.add_file_reference(ref)
+  bf.settings = { 'ATTRIBUTES' => ['Public'] }
+  puts "  public header: #{base}"
+  ref
+end
+
+add_source(project, group, target, 'FeatherModule/FeatherHost.swift', 'FeatherHost.swift')
+add_source(project, group, target, 'FeatherModule/FeatherLauncher.m', 'FeatherLauncher.m')
+add_public_header(project, group, target, 'FeatherModule/Feather.h', 'Feather.h (umbrella)')
+add_public_header(project, group, target, 'FeatherModule/FeatherLauncher.h', 'FeatherLauncher.h')
+
+# --- 4. Drop the app's "Embed Frameworks" copy phase (if any) ----------------
 target.copy_files_build_phases
       .select { |p| p.symbol_dst_subfolder_spec == :frameworks }
       .each do |phase|
