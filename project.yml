@@ -104,6 +104,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
+        # objcxx (superset of objc) so OpenClaw's dependency scan can process the
+        # transitive C++ bridging headers pulled in via FoliumMode (cstdint/string).
+        SWIFT_OBJC_INTEROP_MODE: objcxx
         SUPPORTS_LIVE_ACTIVITIES: YES
         ENABLE_APPINTENTS_METADATA: NO
         ENABLE_APP_INTENTS_METADATA_GENERATION: NO
