@@ -18,8 +18,9 @@ packages:
   TPCircularBuffer:
     path: Packages/TPCircularBuffer
   zstd:
-    url: https://github.com/jarrodnorwell/zstd
-    revision: dfde3ff163f5be1f420f57715bcc44e28fbb233d
+    # Vendored (Packages/zstd) so we can add ZSTD_STATIC_LINKING_ONLY to the
+    # libzstdwrapper target, which upstream omits. Pinned at dfde3ff.
+    path: Packages/zstd
 
 # ---- Shared settings for the C++ emulator cores (static libraries) ----
 targetTemplates:
