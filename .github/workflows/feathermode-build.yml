@@ -1,0 +1,92 @@
+name: FeatherMode Framework (Stage A validator)
+
+# Stage A of embedding Feather: prove that Feather's app layer, forked into an
+# embeddable Feather.framework (module "Feather"), compiles on our Xcode 26 runner.
+# Feather is SwiftUI + SPM (Vapor / SwiftNIO / Zsign / IDeviceKit); the app target
+# builds standalone via -project (packages are XCLocalSwiftPackageReference).
+# Feather is cloned on the runner ONLY.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FEATHER_REPO: https://github.com/claration/Feather.git
+  FEATHER_SHA: 82a0087b28da3db5665c0a1e255acfe0151c4caa
+
+jobs:
+  feathermode:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout OpenClaw (fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
+      - name: Select newest Xcode
+        run: |
+          set -e
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$latest" ] && sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+      - name: Clone Feather (recursive + LFS, SSH->HTTPS)
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git lfs install
+          git clone "$FEATHER_REPO" feather
+          cd feather
+          git checkout "$FEATHER_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          git lfs pull || true
+          git submodule foreach --recursive 'git lfs pull || true'
+          echo "--- submodule status ---"; git submodule status --recursive | head -20
+
+      - name: Install xcodeproj gem
+        run: sudo gem install xcodeproj --no-document
+
+      - name: Apply FeatherMode fork
+        run: |
+          set -e
+          chmod +x openclaw/Modes/Feather/fork/apply_fork.sh
+          bash openclaw/Modes/Feather/fork/apply_fork.sh "$PWD/feather" "$PWD/openclaw/Modes/Feather/fork"
+
+      - name: Build Feather.framework (unsigned)
+        run: |
+          cd feather
+          set -o pipefail
+          xcodebuild build \
+            -project Feather.xcodeproj \
+            -scheme Feather \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+          rc=${PIPESTATUS[0]}
+          echo "::group::error summary"
+          grep -nE "error:|fatal error|BUILD (SUCCEEDED|FAILED)" build.log | tail -80 || true
+          echo "::endgroup::"
+          echo "::group::built frameworks"
+          find build/Build/Products -type d -name "*.framework" 2>/dev/null | sort || true
+          echo "::endgroup::"
+          echo "::group::Feather.framework"
+          FW=$(find build/Build/Products -type d -name "Feather.framework" 2>/dev/null | head -1)
+          if [ -n "$FW" ]; then
+            ls -la "$FW" || true
+            echo "--- Modules ---"; ls -la "$FW/Modules" 2>/dev/null || true
+            echo "--- otool -L (@rpath) ---"; otool -L "$FW/Feather" 2>/dev/null | grep -E "@rpath|@executable" || echo "(none)"
+          else
+            echo "Feather.framework NOT produced"
+          fi
+          echo "::endgroup::"
+          exit $rc
