@@ -33,10 +33,13 @@ echo "   overlaid FileManager+documents.swift (Documents/Feather/ isolation)"
 perl -0pi -e 's/^\@main/\/\/ \@main (removed for FeatherMode framework)/m' "$APP/FeatherApp.swift"
 echo "   neutralized @main in FeatherApp.swift"
 
-# 3. Remove the `static` forward declaration from iconPoc.h (illegal in a modular
-#    umbrella header; unused POC helper, definition stays self-contained in .m).
-perl -0pi -e 's/^\s*static\s+CGColorRef\s+FRCreateCGColorFromHex\(void\);\s*$//m' "$APP/Utilities/iconPoc.h"
-echo "   stripped static FRCreateCGColorFromHex decl from iconPoc.h"
+# 3. FRCreateCGColorFromHex is declared `static` in iconPoc.h and defined `static`
+#    in iconPoc.m, which forward-references it. A static decl in a modular umbrella
+#    header is invalid, but simply deleting it breaks the .m. Make both non-static
+#    (a normal exported helper) — module-clean and the forward reference resolves.
+perl -0pi -e 's/static\s+(CGColorRef\s+FRCreateCGColorFromHex\s*\()/$1/g' "$APP/Utilities/iconPoc.h"
+perl -0pi -e 's/static\s+(CGColorRef\s+FRCreateCGColorFromHex\s*\()/$1/g' "$APP/Utilities/iconPoc.m"
+echo "   made FRCreateCGColorFromHex non-static in iconPoc.h + iconPoc.m"
 
 # 4. Isolate Core Data: point the store at Documents/Feather/Feather.sqlite.
 perl -0pi -e 's/(container = NSPersistentContainer\(name: _name\)\n)/$1\n\t\tif !inMemory {\n\t\t\tlet _dir = URL.documentsDirectory.appendingPathComponent("Feather", isDirectory: true)\n\t\t\ttry? FileManager.default.createDirectory(at: _dir, withIntermediateDirectories: true)\n\t\t\tcontainer.persistentStoreDescriptions.first?.url = _dir.appendingPathComponent("Feather.sqlite")\n\t\t}\n/' \
