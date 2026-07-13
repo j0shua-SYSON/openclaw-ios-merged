@@ -27,17 +27,23 @@ perl -0pi -e 's/\@UIApplicationMain/\/\/ \@UIApplicationMain (removed for DeltaM
   "$APP/AppDelegate.swift"
 echo "   neutralized @UIApplicationMain in AppDelegate.swift"
 
-# 2b. Redirect Delta's own-resource lookups from Bundle.main (which is OpenClaw.app
-#     when embedded) to the Delta.framework bundle. Delta bundles openvgdb.sqlite,
-#     cheatbase.zip, WhatsNew/Patreon/RevenueCat/Contributors/CheatIcons/Lu plists,
-#     Profanity.txt and nibs in the framework, but loads them via Bundle.main —
-#     several force-unwrapped, so they crash on launch when embedded. Bundle
+# 2b. Redirect Delta's own-resource + asset-catalog lookups from Bundle.main (which
+#     is OpenClaw.app when embedded) to the Delta.framework bundle. Delta bundles
+#     openvgdb.sqlite, cheatbase.zip, plists, Profanity.txt, nibs AND its asset
+#     catalog (Assets.car: colors "Purple"/"LightPurple"/"DarkGray", images) inside
+#     the framework, but loads them via Bundle.main. UIColor(named:) defaults to
+#     Bundle.main and Delta force-unwraps deltaPurple -> the actual launch crash.
+#     UIImage(named:) / SwiftUI Color()/Image() do the same (missing assets). Bundle
 #     .deltaResources (defined in DeltaHost.swift) points at the framework bundle.
 find "$APP" -name "*.swift" -type f -exec perl -0pi -e \
   's/Bundle\.main\.url\(forResource/Bundle.deltaResources.url(forResource/g;
    s/Bundle\.main\.path\(forResource/Bundle.deltaResources.path(forResource/g;
-   s/Bundle\.main\.loadNibNamed\(/Bundle.deltaResources.loadNibNamed(/g' {} +
-echo "   redirected Bundle.main resource lookups -> Bundle.deltaResources"
+   s/Bundle\.main\.loadNibNamed\(/Bundle.deltaResources.loadNibNamed(/g;
+   s/UIColor\(named:\s*"([^"]+)"\)/UIColor(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
+   s/UIImage\(named:\s*"([^"]+)"\)/UIImage(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
+   s/(?<![A-Za-z])Color\(\s*"([^"]+)"\s*\)/Color("$1", bundle: Bundle.deltaResources)/g;
+   s/(?<![A-Za-z])Image\(\s*"([^"]+)"\s*\)/Image("$1", bundle: Bundle.deltaResources)/g' {} +
+echo "   redirected Bundle.main resource + asset-catalog lookups -> Bundle.deltaResources"
 
 # 3. Convert the app target into DeltaMode.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Delta.xcodeproj"
