@@ -32,6 +32,15 @@ begin
     end
     puts "  (monkey-patched synchronized-group exception set: #{extra.map(&:isa).join(', ')})"
   end
+
+  # The exception set's display_name (used when serializing the pbxproj comment)
+  # calls build_phase.name; fixed-purpose phases (Resources/Headers/Frameworks/
+  # Sources) don't define `name`. Give them one so project.save round-trips.
+  %i[PBXResourcesBuildPhase PBXHeadersBuildPhase PBXFrameworksBuildPhase PBXSourcesBuildPhase].each do |n|
+    next unless O.const_defined?(n)
+    c = O.const_get(n)
+    c.send(:define_method, :name) { display_name } unless c.method_defined?(:name)
+  end
 rescue StandardError => e
   warn "  WARNING: synchronized-group monkey-patch failed: #{e.class}: #{e.message}"
 end
