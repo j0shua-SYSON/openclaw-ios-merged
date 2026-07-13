@@ -33,14 +33,15 @@ targetTemplates:
         SWIFT_APPROACHABLE_CONCURRENCY: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         GCC_C_LANGUAGE_STANDARD: gnu23
-        DEFINES_MODULE: YES
     dependencies:
       - package: SharedDependencies
 
 targets:
   Grape:
     templates: [Core]
-    sources: [Cores/Grape]
+    sources:
+      - path: Cores/Grape
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++23"
@@ -49,7 +50,9 @@ targets:
 
   Kiwi:
     templates: [Core]
-    sources: [Cores/Kiwi]
+    sources:
+      - path: Cores/Kiwi
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
@@ -58,7 +61,9 @@ targets:
 
   Mandarine:
     templates: [Core]
-    sources: [Cores/Mandarine]
+    sources:
+      - path: Cores/Mandarine
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
@@ -67,7 +72,9 @@ targets:
 
   Tomato:
     templates: [Core]
-    sources: [Cores/Tomato]
+    sources:
+      - path: Cores/Tomato
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
