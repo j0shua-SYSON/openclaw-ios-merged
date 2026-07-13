@@ -81,7 +81,7 @@ public actor GrapeSystem {
     
     public var running: Bool {
         get {
-            grape.is_running()
+            grape.is_running(false, false)
         }
         set {
             grape.is_running(true, newValue)
@@ -96,7 +96,7 @@ public actor GrapeSystem {
     
     public var paused: Bool {
         get {
-            grape.is_paused()
+            grape.is_paused(false, false)
         }
         set {
             grape.is_paused(true, newValue)

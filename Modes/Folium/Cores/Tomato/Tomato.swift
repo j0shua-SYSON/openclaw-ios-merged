@@ -71,7 +71,7 @@ public actor TomatoSystem {
     
     public var running: Bool {
         get {
-            tomato.is_running()
+            tomato.is_running(false, false)
         }
         set {
             tomato.is_running(true, newValue)
@@ -86,7 +86,7 @@ public actor TomatoSystem {
     
     public var paused: Bool {
         get {
-            tomato.is_paused()
+            tomato.is_paused(false, false)
         }
         set {
             tomato.is_paused(true, newValue)
