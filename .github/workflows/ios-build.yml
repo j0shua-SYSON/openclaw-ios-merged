@@ -10,6 +10,9 @@ on:
     paths-ignore:
       - "**/*.md"
       - "MERGE_PLAN.md"
+      # Delta fork scripts are consumed only by deltamode-build.yml (Stage A);
+      # they don't affect the OpenClaw build until project.yml wires them in.
+      - "Modes/Delta/**"
 
 concurrency:
   group: ios-build-${{ github.ref }}

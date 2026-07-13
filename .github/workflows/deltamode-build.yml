@@ -1,0 +1,88 @@
+name: DeltaMode Framework (Stage A validator)
+
+# Stage A of embedding Delta: prove that Delta's app layer, forked into an
+# embeddable DeltaMode.framework (Swift module "Delta"), compiles on our Xcode 26
+# runner inside Delta's own CocoaPods workspace. This is the gating unknown before
+# wiring it into OpenClaw (Stage B). Delta is cloned on the runner ONLY.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DELTA_REPO: https://github.com/rileytestut/Delta.git
+  DELTA_SHA: adee3c5c13a5fd944d0389cdbdd526cdcff2e6e6
+
+jobs:
+  deltamode:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - name: Checkout OpenClaw (fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
+      - name: Select newest Xcode
+        run: |
+          set -e
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$latest" ] && sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+      - name: Clone Delta (recursive + LFS, SSH->HTTPS)
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git lfs install
+          git clone "$DELTA_REPO" delta
+          cd delta
+          git checkout "$DELTA_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          git lfs pull || true
+          git submodule foreach --recursive 'git lfs pull || true'
+
+      - name: Install xcodeproj gem
+        run: sudo gem install xcodeproj --no-document
+
+      - name: Apply DeltaMode fork
+        run: |
+          set -e
+          chmod +x openclaw/Modes/Delta/fork/apply_fork.sh
+          bash openclaw/Modes/Delta/fork/apply_fork.sh "$PWD/delta" "$PWD/openclaw/Modes/Delta/fork"
+
+      - name: Build DeltaMode.framework (unsigned)
+        run: |
+          cd delta
+          set -o pipefail
+          xcodebuild build \
+            -workspace Delta.xcworkspace \
+            -scheme Delta \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+          rc=${PIPESTATUS[0]}
+          echo "::group::error summary"
+          grep -nE "error:|fatal error|BUILD (SUCCEEDED|FAILED)" build.log | tail -80 || true
+          echo "::endgroup::"
+          echo "::group::built frameworks"
+          find build/Build/Products -type d -name "*.framework" 2>/dev/null | sort || true
+          echo "::endgroup::"
+          echo "::group::DeltaMode.framework contents"
+          DM=$(find build/Build/Products -type d -name "DeltaMode.framework" 2>/dev/null | head -1)
+          if [ -n "$DM" ]; then
+            ls -la "$DM" || true
+            echo "--- otool -L ---"; otool -L "$DM/DeltaMode" 2>/dev/null | grep -E "@rpath|@executable" || true
+          else
+            echo "DeltaMode.framework NOT produced"
+          fi
+          echo "::endgroup::"
+          exit $rc
