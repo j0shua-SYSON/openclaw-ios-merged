@@ -36,6 +36,32 @@ targetTemplates:
         # only on its APP target, not the cores; forcing it on cores makes nonisolated
         # funcs (press/release) unable to touch computed props (KiwiButton.uint32).
         GCC_C_LANGUAGE_STANDARD: gnu23
+        # XcodeGen native targets don't inherit SPM's transitive C-header search paths,
+        # so the cores can't find <eventbus/EventBus.h> etc. Add the vendored
+        # SharedDependencies source include dirs explicitly.
+        HEADER_SEARCH_PATHS:
+          - $(SRCROOT)/SharedDependencies/Sources/cereal/include
+          - $(SRCROOT)/SharedDependencies/Sources/cryptopp/include
+          - $(SRCROOT)/SharedDependencies/Sources/dds_ktx/include
+          - $(SRCROOT)/SharedDependencies/Sources/eventbus/include
+          - $(SRCROOT)/SharedDependencies/Sources/glib/include
+          - $(SRCROOT)/SharedDependencies/Sources/httplib/include
+          - $(SRCROOT)/SharedDependencies/Sources/inih/include
+          - $(SRCROOT)/SharedDependencies/Sources/jwt/include
+          - $(SRCROOT)/SharedDependencies/Sources/libchdr/include
+          - $(SRCROOT)/SharedDependencies/Sources/libslirp/include
+          - $(SRCROOT)/SharedDependencies/Sources/lodepng/include
+          - $(SRCROOT)/SharedDependencies/Sources/magic_enum/include
+          - $(SRCROOT)/SharedDependencies/Sources/metal_cpp/include
+          - $(SRCROOT)/SharedDependencies/Sources/microprofile/include
+          - $(SRCROOT)/SharedDependencies/Sources/miniz/include
+          - $(SRCROOT)/SharedDependencies/Sources/nihstro/include
+          - $(SRCROOT)/SharedDependencies/Sources/nlohmann/include
+          - $(SRCROOT)/SharedDependencies/Sources/oaknut/include
+          - $(SRCROOT)/SharedDependencies/Sources/stb/include
+          - $(SRCROOT)/SharedDependencies/Sources/toml/include
+          - $(SRCROOT)/SharedDependencies/Sources/tsl/include
+          - $(SRCROOT)/SharedDependencies/Sources/xxhash/include
     dependencies:
       - package: SharedDependencies
 
