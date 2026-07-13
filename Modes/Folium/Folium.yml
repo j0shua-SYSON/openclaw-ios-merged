@@ -32,7 +32,9 @@ targetTemplates:
         SWIFT_VERSION: "6.0"
         SWIFT_OBJC_INTEROP_MODE: objcxx
         SWIFT_APPROACHABLE_CONCURRENCY: YES
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # NOTE: no SWIFT_DEFAULT_ACTOR_ISOLATION here. Folium sets MainActor default
+        # only on its APP target, not the cores; forcing it on cores makes nonisolated
+        # funcs (press/release) unable to touch computed props (KiwiButton.uint32).
         GCC_C_LANGUAGE_STANDARD: gnu23
     dependencies:
       - package: SharedDependencies
