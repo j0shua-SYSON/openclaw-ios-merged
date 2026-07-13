@@ -671,6 +671,7 @@ struct OpenClawApp: App {
     @State private var appearanceModel: AppAppearanceModel
     @State private var appModel: NodeAppModel
     @State private var gatewayController: GatewayConnectionController
+    @State private var modeManager: ModeManager
     @UIApplicationDelegateAdaptor(OpenClawAppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 
@@ -705,41 +706,65 @@ struct OpenClawApp: App {
                 appModel: appModel,
                 startDiscovery: !Self.screenshotModeEnabled,
                 deferDiscoveryUntilLocalNetworkRequest: true))
+        _modeManager = State(initialValue: ModeManager())
     }
 
     var body: some Scene {
         WindowGroup {
-            RootTabs()
-                .tint(OpenClawBrand.accent)
-                .font(OpenClawType.body)
-                .environment(self.appearanceModel)
-                .preferredColorScheme(self.appearanceModel.preference.colorScheme)
-                .environment(self.appModel)
-                .environment(self.appModel.voiceWake)
-                .environment(self.gatewayController)
-                .task {
-                    self.appModel.setScenePhase(self.scenePhase)
-                    self.appDelegate.appModel = self.appModel
-                    self.appDelegate.scenePhaseChanged(self.scenePhase)
-                    self.applyWindowTint()
-                    self.gatewayController.setScenePhase(self.scenePhase)
+            ZStack {
+                RootTabs()
+                    .tint(OpenClawBrand.accent)
+                    .font(OpenClawType.body)
+                    .environment(self.appearanceModel)
+                    .preferredColorScheme(self.appearanceModel.preference.colorScheme)
+                    .environment(self.appModel)
+                    .environment(self.appModel.voiceWake)
+                    .environment(self.gatewayController)
+                    .task {
+                        self.appModel.setScenePhase(self.scenePhase)
+                        self.appDelegate.appModel = self.appModel
+                        self.appDelegate.scenePhaseChanged(self.scenePhase)
+                        self.applyWindowTint()
+                        self.gatewayController.setScenePhase(self.scenePhase)
+                    }
+                    .onReceive(
+                        NotificationCenter.default.publisher(for: UIContentSizeCategory.didChangeNotification),
+                        perform: { _ in
+                            OpenClawType.refreshUIKitAppearance(in: Self.connectedWindows())
+                        })
+                    .onOpenURL { url in
+                        // SwiftUI owns normal scene delivery; the delegate also queues URLs
+                        // that arrive before the scene has installed its model.
+                        Task { await self.appDelegate.handleOpenURL(url, model: self.appModel) }
+                    }
+                    .onChange(of: self.scenePhase) { _, newValue in
+                        self.appModel.setScenePhase(newValue)
+                        self.gatewayController.setScenePhase(newValue)
+                        self.appDelegate.scenePhaseChanged(newValue)
+                        self.applyWindowTint()
+                    }
+
+                // Hidden mode switcher: 5 taps with 3 fingers toggles the panel.
+                if let mode = self.modeManager.activeMode {
+                    ModeContainerView(mode: mode) {
+                        self.modeManager.activate(nil)
+                    }
+                    .transition(.opacity)
+                    .zIndex(1)
                 }
-                .onReceive(
-                    NotificationCenter.default.publisher(for: UIContentSizeCategory.didChangeNotification),
-                    perform: { _ in
-                        OpenClawType.refreshUIKitAppearance(in: Self.connectedWindows())
-                    })
-                .onOpenURL { url in
-                    // SwiftUI owns normal scene delivery; the delegate also queues URLs
-                    // that arrive before the scene has installed its model.
-                    Task { await self.appDelegate.handleOpenURL(url, model: self.appModel) }
+                if self.modeManager.panelVisible {
+                    ModeSwitcherPanel(manager: self.modeManager)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(2)
                 }
-                .onChange(of: self.scenePhase) { _, newValue in
-                    self.appModel.setScenePhase(newValue)
-                    self.gatewayController.setScenePhase(newValue)
-                    self.appDelegate.scenePhaseChanged(newValue)
-                    self.applyWindowTint()
+                SecretGestureInstaller {
+                    withAnimation(.spring(duration: 0.3)) { self.modeManager.togglePanel() }
                 }
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+                .zIndex(3)
+            }
         }
     }
 
