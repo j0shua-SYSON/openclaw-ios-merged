@@ -1,31 +1,39 @@
 //
 //  DeltaHost.swift
-//  DeltaMode
+//  Delta (forked into Delta.framework for OpenClaw)
 //
-//  Added by the OpenClaw merge fork. Delta normally boots through its own
-//  UIApplication / scene lifecycle (AppDelegate + SceneDelegate + Main.storyboard).
-//  When embedded as DeltaMode.framework inside OpenClaw there is no Delta app
-//  lifecycle, so this factory performs the minimal launch setup that
-//  AppDelegate.didFinishLaunchingWithOptions would do (register defaults + cores)
-//  and then hands back Delta's storyboard root view controller for OpenClaw to
-//  present as a mode.
+//  Delta normally boots through its own UIApplication / scene lifecycle
+//  (AppDelegate + SceneDelegate + Main.storyboard). When embedded as
+//  Delta.framework inside OpenClaw there is no Delta app lifecycle, so this
+//  factory performs the minimal launch setup that AppDelegate.didFinishLaunching
+//  would do (register defaults + cores) and hands back Delta's storyboard root
+//  view controller for OpenClaw to present as a mode.
 //
-//  NOTE: this file compiles inside Delta's own Swift module (PRODUCT_MODULE_NAME
-//  is kept as "Delta" so storyboards' customModule="Delta" and the scene manifest
-//  keep resolving), hence it can touch Delta's internal types directly.
+//  This type is `@objc` on purpose: OpenClaw reaches Delta through the pure-ObjC
+//  `DeltaLauncher` shim (see DeltaLauncher.h/.m), NOT via `import Delta`. Delta's
+//  Swift module statically links ~12 Swift/Clang dependencies (Roxas, Harmony,
+//  SQLite, RevenueCat, …) with no shipped module interfaces, so a Swift `import
+//  Delta` from OpenClaw fails with "missing required modules". Crossing the
+//  boundary in Objective-C (Clang) never loads Delta's Swift module, sidestepping
+//  that entirely. DeltaLauncher.m calls the @objc method below.
+//
+//  NOTE: compiles inside Delta's own Swift module (module name kept as "Delta" so
+//  storyboards' customModule + the scene manifest resolve), so it can touch
+//  Delta's internal types directly.
 //
 
 import UIKit
 import DeltaCore
 
-public enum DeltaHost
+@objc(DeltaHost)
+public final class DeltaHost: NSObject
 {
     private static var didRegisterCores = false
 
     /// Builds Delta's real UI (LaunchViewController → GameViewController, with the
     /// games library presented over it). Safe to call more than once — core
     /// registration is guarded so repeated mode switches don't double-register.
-    @MainActor
+    @objc @MainActor
     public static func makeRootViewController() -> UIViewController
     {
         self.prepare()
@@ -33,7 +41,7 @@ public enum DeltaHost
         let storyboard = UIStoryboard(name: "Main", bundle: Bundle(for: LaunchViewController.self))
         guard let rootViewController = storyboard.instantiateInitialViewController() else
         {
-            fatalError("DeltaMode: Main.storyboard has no initial view controller.")
+            fatalError("Delta: Main.storyboard has no initial view controller.")
         }
 
         // Delta normally applies its purple tint on the window in configureAppearance();

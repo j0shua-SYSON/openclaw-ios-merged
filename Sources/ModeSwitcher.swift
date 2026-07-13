@@ -1,8 +1,9 @@
-import Delta
 import FoliumMode
 import Observation
 import SwiftUI
 import UIKit
+// Delta is reached via the ObjC `DeltaLauncher` (OpenClaw's bridging header), not
+// `import Delta` — that would require Delta's static transitive Swift modules.
 
 // MARK: - Mode model
 
@@ -248,7 +249,7 @@ struct FoliumModeView: UIViewControllerRepresentable {
 /// Delta app layer; see Modes/Delta/fork.
 struct DeltaModeView: UIViewControllerRepresentable {
     func makeUIViewController(context _: Context) -> UIViewController {
-        DeltaHost.makeRootViewController()
+        DeltaLauncher.makeRootViewController()
     }
 
     func updateUIViewController(_: UIViewController, context _: Context) {}

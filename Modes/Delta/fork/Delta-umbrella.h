@@ -14,6 +14,8 @@
 #import <Delta/ControllerSkinConfigurations.h>
 #import <Delta/GameSetting.h>
 #import <Delta/NSFetchedResultsController+Conveniences.h>
+// OpenClaw's entry point into Delta (UIKit-only surface; see DeltaLauncher.h).
+#import <Delta/DeltaLauncher.h>
 
 FOUNDATION_EXPORT double DeltaVersionNumber;
 FOUNDATION_EXPORT const unsigned char DeltaVersionString[];

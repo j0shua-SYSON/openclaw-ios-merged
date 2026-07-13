@@ -106,7 +106,7 @@ umbrella_bf.settings = { 'ATTRIBUTES' => ['Public'] }
 puts '  public header: Delta.h (umbrella)'
 
 # ---------------------------------------------------------------------------
-# 4. Add the DeltaHost.swift factory to the compile sources.
+# 4. Add the DeltaHost.swift factory + DeltaLauncher ObjC boundary.
 # ---------------------------------------------------------------------------
 host_ref = project.files.find { |f| f.path && File.basename(f.path) == 'DeltaHost.swift' }
 host_ref ||= project.main_group.new_reference('Delta/DeltaHost.swift')
@@ -114,6 +114,22 @@ unless target.source_build_phase.files.any? { |bf| bf.file_ref == host_ref }
   target.source_build_phase.add_file_reference(host_ref)
 end
 puts '  source: DeltaHost.swift'
+
+# DeltaLauncher.m — pure-ObjC shim compiled into the framework.
+launcher_m = project.files.find { |f| f.path && File.basename(f.path) == 'DeltaLauncher.m' }
+launcher_m ||= project.main_group.new_reference('Delta/DeltaLauncher.m')
+unless target.source_build_phase.files.any? { |bf| bf.file_ref == launcher_m }
+  target.source_build_phase.add_file_reference(launcher_m)
+end
+puts '  source: DeltaLauncher.m'
+
+# DeltaLauncher.h — public header (OpenClaw's UIKit-only entry point).
+launcher_h = project.files.find { |f| f.path && File.basename(f.path) == 'DeltaLauncher.h' }
+launcher_h ||= project.main_group.new_reference('Delta/DeltaLauncher.h')
+launcher_bf = headers_phase.files.find { |bf| bf.file_ref == launcher_h }
+launcher_bf ||= headers_phase.add_file_reference(launcher_h)
+launcher_bf.settings = { 'ATTRIBUTES' => ['Public'] }
+puts '  public header: DeltaLauncher.h'
 
 # ---------------------------------------------------------------------------
 # 5. Drop the app's "Embed Frameworks" copy phase. Cores must sit in OpenClaw's

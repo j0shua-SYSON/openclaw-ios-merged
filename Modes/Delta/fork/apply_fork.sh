@@ -14,11 +14,13 @@ APP="$CLONE/Delta"                      # Delta's app source dir
 
 echo "== apply_fork: clone=$CLONE fork=$FORK =="
 
-# 1. Drop in the public factory + the umbrella header.
+# 1. Drop in the public factory, the ObjC boundary, and the umbrella header.
 cp "$FORK/../App/DeltaHost.swift" "$APP/DeltaHost.swift"
+cp "$FORK/DeltaLauncher.h"        "$APP/DeltaLauncher.h"
+cp "$FORK/DeltaLauncher.m"        "$APP/DeltaLauncher.m"
 cp "$FORK/Delta-umbrella.h"       "$APP/Delta.h"
 cp "$FORK/DeltaMode-Info.plist"   "$CLONE/DeltaMode-Info.plist"
-echo "   copied DeltaHost.swift, Delta.h (umbrella), DeltaMode-Info.plist"
+echo "   copied DeltaHost.swift, DeltaLauncher.{h,m}, Delta.h (umbrella), DeltaMode-Info.plist"
 
 # 2. Neutralize the app entry point — @UIApplicationMain is illegal in a framework.
 perl -0pi -e 's/\@UIApplicationMain/\/\/ \@UIApplicationMain (removed for DeltaMode framework build)/g' \

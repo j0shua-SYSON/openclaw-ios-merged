@@ -159,6 +159,10 @@ targets:
         # objcxx (superset of objc) so OpenClaw's dependency scan can process the
         # transitive C++ bridging headers pulled in via FoliumMode (cstdint/string).
         SWIFT_OBJC_INTEROP_MODE: objcxx
+        # Delta mode is reached through the pure-ObjC DeltaLauncher shim, so
+        # OpenClaw's Swift never `import Delta` (which would drag in Delta's ~12
+        # statically-linked transitive Swift/Clang modules). See Modes/Delta/fork.
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/OpenClaw-Bridging-Header.h
         SUPPORTS_LIVE_ACTIVITIES: YES
         ENABLE_APPINTENTS_METADATA: NO
         ENABLE_APP_INTENTS_METADATA_GENERATION: NO
