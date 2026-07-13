@@ -27,6 +27,7 @@ using namespace Mandarine;
 
 #include <fmt/core.h>
 #include <fmt/format.h>
+#define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 

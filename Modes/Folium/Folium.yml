@@ -105,13 +105,14 @@ targets:
     templates: [Core]
     sources:
       - path: Cores/Tomato
-        # tablegen.cpp is NanoBoyAdvance's host-side ARM-table generator, not part
-        # of the emulator library (the generated gen_arm.hpp is committed).
-        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx", "System/arm/tablegen/tablegen.cpp"]
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Tomato/System/include"
+        # Recursive: tablegen.cpp DEFINES the ARM7TDMI LUTs (s_opcode_lut_*) and
+        # quoted-includes the committed gen_arm.hpp / gen_thumb.hpp from
+        # include/nba/arm/tablegen/. It has no main(); it's a real compilation unit.
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Tomato/System/include/**"
         SWIFT_OBJC_BRIDGING_HEADER: "Cores/Tomato/System/include/nba/bridge.hpp"
 
   # ---- Folium app layer as an embeddable framework ----

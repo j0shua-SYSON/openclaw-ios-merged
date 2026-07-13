@@ -12,6 +12,7 @@
 #include "nba/rom/backup/flash.hpp"
 #include "nba/rom/backup/sram.hpp"
 
+#define SDL_MAIN_HANDLED
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_main.h>
 
