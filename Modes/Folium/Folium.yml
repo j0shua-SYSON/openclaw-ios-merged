@@ -19,7 +19,7 @@ packages:
     path: Packages/TPCircularBuffer
   zstd:
     url: https://github.com/jarrodnorwell/zstd
-    branch: main
+    revision: dfde3ff163f5be1f420f57715bcc44e28fbb233d
 
 # ---- Shared settings for the C++ emulator cores (static libraries) ----
 targetTemplates:
