@@ -51,6 +51,7 @@ let package = Package(
         .target(
             name: "libzstdwrapper",
             path: "zlibWrapper",
+            exclude: [ "examples" ],
             publicHeadersPath: ".",
             cSettings: [
                 .headerSearchPath("."),
