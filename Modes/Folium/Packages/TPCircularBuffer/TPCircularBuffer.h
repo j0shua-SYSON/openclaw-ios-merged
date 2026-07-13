@@ -46,6 +46,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include <stdint.h>
 // Plain integer + __atomic builtins (valid in both C and C++) so the struct stays
 // Swift-importable under C++ interop. A std::atomic member makes the whole struct
 // non-trivial and invisible to Swift ("cannot find type 'TPCircularBuffer'").
