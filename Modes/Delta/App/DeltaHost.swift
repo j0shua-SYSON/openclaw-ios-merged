@@ -25,6 +25,16 @@
 import UIKit
 import DeltaCore
 
+extension Bundle
+{
+    /// The Delta.framework bundle. Delta ships its resources (storyboards,
+    /// openvgdb.sqlite, cheatbase.zip, WhatsNew/Patreon/RevenueCat/Contributors
+    /// plists, Profanity.txt, nibs, …) inside the framework, but its code loads
+    /// them via `Bundle.main` — which is Delta.app normally but OpenClaw.app when
+    /// embedded. apply_fork.sh rewrites those resource lookups to use this instead.
+    static var deltaResources: Bundle { Bundle(for: DeltaHost.self) }
+}
+
 @objc(DeltaHost)
 public final class DeltaHost: NSObject
 {
