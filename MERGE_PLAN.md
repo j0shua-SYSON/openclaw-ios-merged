@@ -12,6 +12,16 @@ Windows). Nothing is written to the C: drive locally.
 **Embedded modes (scope, locked):** Delta, iSH, Feather, DolphiniOS, UTM **SE**, Folium.
 Dropped: LiveContainer, SideStore, SideInstaller, PPSSPP, MeloNX, Provenance, iDOS.
 
+**Repo:** `j0shua-SYSON/openclaw-ios-merged` (private). CI build → `ci-unsigned` release; signed → `ci-signed`.
+
+---
+
+## Status (updated 2026-07-13)
+
+- **Phase 0 ✅** — self-contained OpenClaw builds green in CI (Xcode 26, Swift 6, SPM traits, WebRTC, watch + extensions). Unsigned IPA (~29.7 MB) published to the `ci-unsigned` release. `Re-sign IPA` workflow ready (needs the 3 signing secrets).
+- **Phase 1 ✅** — hidden mode switcher live: window-level 5-tap/3-finger recognizer, switcher panel listing all 6 modes, per-mode `Documents/<mode>/` isolation, placeholder mode container. Compiles + ships in CI (`Sources/ModeSwitcher.swift` + `OpenClawApp` wiring).
+- **Phase 2 ⏳** — Folium (next): vendor `../AntiqueKit` + `~/Downloads/TPCircularBuffer`, build its 4 C++ cores (Grape/Kiwi/Mandarine/Tomato), symbol-isolate vs future melonDS in Delta, present `GamesController`, redirect data to `Documents/Folium/`.
+
 ---
 
 ## 1. Systems the finished app would cover
