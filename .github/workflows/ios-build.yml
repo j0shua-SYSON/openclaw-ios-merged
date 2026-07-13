@@ -82,6 +82,13 @@ jobs:
           set -e
           APP=$(ls -d build/OpenClaw.xcarchive/Products/Applications/*.app | head -1)
           echo "App bundle: $APP"
+          FM="$APP/Frameworks/FoliumMode.framework/FoliumMode"
+          if [ -f "$FM" ]; then
+            echo "::group::FoliumMode dynamic deps (@rpath = must be embedded)"
+            otool -L "$FM" | grep -E "@rpath|@executable_path" || echo "(none - all deps static)"
+            echo "--- embedded frameworks ---"; ls "$APP/Frameworks/"
+            echo "::endgroup::"
+          fi
           rm -rf build/Payload && mkdir -p build/Payload
           cp -R "$APP" build/Payload/
           (cd build && zip -qry OpenClaw-unsigned.ipa Payload)
