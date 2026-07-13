@@ -21,6 +21,10 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  DELTA_REPO: https://github.com/rileytestut/Delta.git
+  DELTA_SHA: adee3c5c13a5fd944d0389cdbdd526cdcff2e6e6
+
 jobs:
   build:
     runs-on: macos-15
@@ -42,6 +46,72 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      # --- Delta mode: build the forked Delta.framework + core frameworks -------
+      # Delta's app layer is forked into Delta.framework inside Delta's own
+      # CocoaPods workspace (Stage A, validated by deltamode-build.yml). We build
+      # it here and drop the 13 dynamic frameworks into Vendor/DeltaPrebuilt/ for
+      # project.yml to embed. Cached on the Delta SHA + fork scripts so unrelated
+      # OpenClaw changes reuse the prior Delta build.
+      - name: Restore Delta frameworks cache
+        id: delta-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Vendor/DeltaPrebuilt
+          key: delta-fw-v1-${{ env.DELTA_SHA }}-${{ hashFiles('Modes/Delta/fork/**', 'Modes/Delta/App/**') }}
+
+      - name: Build Delta frameworks
+        if: steps.delta-cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git lfs install
+          git clone "$DELTA_REPO" delta
+          cd delta
+          git checkout "$DELTA_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          git lfs pull || true
+          git submodule foreach --recursive 'git lfs pull || true'
+          cd ..
+          sudo gem install xcodeproj --no-document
+          chmod +x Modes/Delta/fork/apply_fork.sh
+          bash Modes/Delta/fork/apply_fork.sh "$PWD/delta" "$PWD/Modes/Delta/fork"
+          cd delta
+          set -o pipefail
+          xcodebuild build \
+            -workspace Delta.xcworkspace \
+            -scheme Delta \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          cd ..
+          PRODUCTS="delta/build/Build/Products/Debug-iphoneos"
+          mkdir -p Vendor/DeltaPrebuilt
+          for fw in Delta DeltaCore NESDeltaCore SNESDeltaCore GBADeltaCore GBCDeltaCore \
+                    GPGXDeltaCore MelonDSDeltaCore N64DeltaCore N64DeltaCore_RSP \
+                    N64DeltaCore_Video OperatorKit ZIPFoundation; do
+            if [ -d "$PRODUCTS/$fw.framework" ]; then
+              cp -R "$PRODUCTS/$fw.framework" Vendor/DeltaPrebuilt/
+            else
+              echo "::error::Delta framework missing: $fw.framework"; exit 1
+            fi
+          done
+          # Reclaim disk: the Delta clone + DerivedData are large and no longer needed.
+          rm -rf delta
+          echo "--- Vendor/DeltaPrebuilt ---"; ls Vendor/DeltaPrebuilt
+
+      # Save immediately after a successful Delta build (before the OpenClaw archive)
+      # so the cache persists even if a later OpenClaw step fails — keeps iteration fast.
+      - name: Save Delta frameworks cache
+        if: steps.delta-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Vendor/DeltaPrebuilt
+          key: delta-fw-v1-${{ env.DELTA_SHA }}-${{ hashFiles('Modes/Delta/fork/**', 'Modes/Delta/App/**') }}
 
       - name: Generate build/Version.xcconfig
         run: |
@@ -85,11 +155,17 @@ jobs:
           set -e
           APP=$(ls -d build/OpenClaw.xcarchive/Products/Applications/*.app | head -1)
           echo "App bundle: $APP"
+          echo "::group::embedded frameworks"; ls "$APP/Frameworks/" || true; echo "::endgroup::"
           FM="$APP/Frameworks/FoliumMode.framework/FoliumMode"
           if [ -f "$FM" ]; then
             echo "::group::FoliumMode dynamic deps (@rpath = must be embedded)"
             otool -L "$FM" | grep -E "@rpath|@executable_path" || echo "(none - all deps static)"
-            echo "--- embedded frameworks ---"; ls "$APP/Frameworks/"
+            echo "::endgroup::"
+          fi
+          DF="$APP/Frameworks/Delta.framework/Delta"
+          if [ -f "$DF" ]; then
+            echo "::group::Delta.framework @rpath deps (cores must be embedded)"
+            otool -L "$DF" | grep -E "@rpath" || echo "(none)"
             echo "::endgroup::"
           fi
           rm -rf build/Payload && mkdir -p build/Payload

@@ -52,4 +52,28 @@ OpenClaw. Medium effort. Delivers Delta's *emulation* of all systems, but **not*
 Path A is what "embed Delta" really means, but it's the single largest task in the project and the
 bridging-header fork is fiddly. If the goal is a *working emulator mode soonest*, **Folium is far
 cleaner** (Swift 6, SPM, framework-ready, no bridging header) — hence the original "Folium first".
-Decision pending from the user.
+
+## Chosen: Path A (Full Delta app), as implemented
+
+The user chose **Full Delta app**. Implemented as a two-stage fork:
+
+**Stage A — `Delta.framework` (VALIDATED green, run 29259487672).** `Modes/Delta/fork/` converts
+Delta's app target *in place* into a framework, built inside Delta's own CocoaPods workspace on CI:
+- `convert_to_framework.rb` (xcodeproj gem): flips product type → framework; promotes the 3 ObjC
+  bridging headers to a **public umbrella** (`Delta.h`); drops the Embed-Frameworks phase.
+- **Framework bundle name == module name == `Delta`** — required, because a mixed ObjC+Swift
+  framework's Clang module is located by *bundle* name. Also keeps storyboards' `customModule="Delta"`
+  and the scene manifest resolving unchanged.
+- `apply_fork.sh`: drops in `DeltaHost.swift` (public `makeRootViewController()` factory that mirrors
+  AppDelegate's registerDefaults + registerCores, then loads `Main.storyboard`'s initial VC) + the
+  umbrella; neutralizes `@UIApplicationMain`; repoints the shared scheme.
+- Pods (Roxas/Harmony/SDWebImage/SQLite/SMCalloutView + Harmony's Google/Dropbox stack) and the 5 SPM
+  deps are **static** (no `use_frameworks!`) → baked into `Delta.framework`. Only **13 dynamic
+  frameworks** ship out: `Delta` + `DeltaCore` + 6 system cores + `N64DeltaCore{,_RSP,_Video}` +
+  `OperatorKit` + `ZIPFoundation`.
+- Validator: `.github/workflows/deltamode-build.yml`.
+
+**Stage B — embed into OpenClaw.** `ios-build.yml` clones Delta, runs the fork, builds the 13
+frameworks into `Vendor/DeltaPrebuilt/` (cached on Delta SHA + fork-script hash), then archives
+OpenClaw. `project.yml` embeds all 13 (`Delta.framework` linked; cores embed-only). `ModeSwitcher`
+gets `import Delta` + `DeltaModeView` wrapping `DeltaHost.makeRootViewController()`.

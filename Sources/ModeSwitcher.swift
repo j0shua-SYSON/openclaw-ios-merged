@@ -1,3 +1,4 @@
+import Delta
 import FoliumMode
 import Observation
 import SwiftUI
@@ -242,16 +243,32 @@ struct FoliumModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts Delta's real storyboard UI (LaunchViewController → games library /
+/// emulation) inside the SwiftUI mode overlay. `Delta.framework` is the forked
+/// Delta app layer; see Modes/Delta/fork.
+struct DeltaModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        DeltaHost.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
 
     var body: some View {
-        if self.mode.id == "folium" {
+        switch self.mode.id {
+        case "folium":
             // Real Folium. Return to OpenClaw via the 5-tap/3-finger switcher panel.
             FoliumModeView()
                 .ignoresSafeArea()
-        } else {
+        case "delta":
+            // Real Delta. Same 5-tap/3-finger gesture returns to OpenClaw.
+            DeltaModeView()
+                .ignoresSafeArea()
+        default:
             self.placeholderBody
         }
     }

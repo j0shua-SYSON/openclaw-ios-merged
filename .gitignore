@@ -37,3 +37,8 @@ LocalSigning.xcconfig
 
 # --- Subagent / scratch ---
 .tmp/
+
+# --- Delta mode prebuilt frameworks (built fresh in CI from the Delta fork) ---
+/Vendor/DeltaPrebuilt/
+# transient Delta clone (CI only)
+/delta/

@@ -87,6 +87,50 @@ targets:
         product: FLAC
       - package: SharedDependencies
         product: ogg
+      # Delta mode — prebuilt dynamic frameworks. Delta's app layer is forked into
+      # Delta.framework (Modes/Delta/fork) and built inside Delta's own CocoaPods
+      # workspace by CI into Vendor/DeltaPrebuilt/ *before* this project is
+      # generated. Delta's pods + SPM deps are static, so only these dynamic
+      # frameworks need embedding. Delta.framework is linked (OpenClaw imports it);
+      # the cores are runtime-only (loaded via Delta.framework's @rpath), embedded.
+      - framework: Vendor/DeltaPrebuilt/Delta.framework
+        embed: true
+      - framework: Vendor/DeltaPrebuilt/DeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/NESDeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/SNESDeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/GBADeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/GBCDeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/GPGXDeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/MelonDSDeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/N64DeltaCore.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/N64DeltaCore_RSP.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/N64DeltaCore_Video.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/OperatorKit.framework
+        embed: true
+        link: false
+      - framework: Vendor/DeltaPrebuilt/ZIPFoundation.framework
+        embed: true
+        link: false
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
