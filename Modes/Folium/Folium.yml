@@ -114,6 +114,9 @@ targets:
         # include/nba/arm/tablegen/. It has no main(); it's a real compilation unit.
         USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Tomato/System/include/**"
         SWIFT_OBJC_BRIDGING_HEADER: "Cores/Tomato/System/include/nba/bridge.hpp"
+        # NanoBoyAdvance builds its ARM opcode LUTs with a 1024-arg template fold
+        # expression; raise clang's default 256 nesting limit.
+        OTHER_CPLUSPLUSFLAGS: "-fbracket-depth=4096"
 
   # ---- Folium app layer as an embeddable framework ----
   FoliumMode:
