@@ -135,9 +135,14 @@ targets:
         DEFINES_MODULE: YES
     dependencies:
       - target: Grape
+        link: true
       - target: Kiwi
+        link: true
       - target: Mandarine
+        link: true
       - target: Tomato
+        link: true
+      - sdk: libresolv.tbd
       - package: SharedDependencies
       - package: TPCircularBuffer
       - package: AntiqueKit
