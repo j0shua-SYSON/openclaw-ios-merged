@@ -1,0 +1,89 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.38039,0.33333,0.96078,1.00000"
+  },
+  "groups" : [
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "image-name" : "leaf.circle.png",
+          "name" : "leaf.circle"
+        }
+      ],
+      "position" : {
+        "scale" : 1.1,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "blend-mode" : "multiply",
+      "blur-material" : 0.5,
+      "hidden" : false,
+      "layers" : [
+        {
+          "image-name" : "circle.fill.png",
+          "name" : "circle.fill"
+        }
+      ],
+      "lighting" : "individual",
+      "position" : {
+        "scale" : 1.1,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "blend-mode" : "multiply",
+      "layers" : [
+        {
+          "image-name" : "opticaldisc.fill.png",
+          "name" : "opticaldisc.fill"
+        }
+      ],
+      "position" : {
+        "scale" : 2,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
