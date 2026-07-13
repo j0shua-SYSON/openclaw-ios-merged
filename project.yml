@@ -79,6 +79,30 @@ targets:
       - target: OpenClawWatchApp
       - target: FoliumMode
         embed: true
+      # Embed FoliumMode's SPM frameworks in the app bundle. Xcode does not auto-embed
+      # frameworks used only transitively via an embedded framework, so link them here.
+      - package: SharedDependencies
+      - package: TPCircularBuffer
+      - package: AntiqueKit
+        product: AntiqueKit
+      - package: AntiqueKit
+        product: ColourKit
+      - package: AntiqueKit
+        product: ConstraintKit
+      - package: AntiqueKit
+        product: ExtensionsKit
+      - package: AntiqueKit
+        product: FontKit
+      - package: AntiqueKit
+        product: OnboardingKit
+      - package: AntiqueKit
+        product: SettingsKit
+      - package: zstd
+        product: libzstd
+      - package: zstd
+        product: libseekable_format
+      - package: zstd
+        product: libzstdwrapper
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
