@@ -31,13 +31,12 @@ jobs:
       - name: Generate FoliumMode project
         run: |
           set -e
-          cd Modes/Folium
-          xcodegen generate --spec Folium.yml
+          # Generate at repo root so SRCROOT matches the merged OpenClaw build.
+          xcodegen generate --spec Modes/Folium/Folium.yml --project .
           echo "=== generated ==="; ls -d *.xcodeproj
 
       - name: Build FoliumMode.framework (unsigned)
         run: |
-          cd Modes/Folium
           set -o pipefail
           xcodebuild build \
             -project FoliumMode.xcodeproj \

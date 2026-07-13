@@ -40,28 +40,28 @@ targetTemplates:
         # so the cores can't find <eventbus/EventBus.h> etc. Add the vendored
         # SharedDependencies source include dirs explicitly.
         HEADER_SEARCH_PATHS:
-          - $(SRCROOT)/SharedDependencies/Sources/cereal/include
-          - $(SRCROOT)/SharedDependencies/Sources/cryptopp/include
-          - $(SRCROOT)/SharedDependencies/Sources/dds_ktx/include
-          - $(SRCROOT)/SharedDependencies/Sources/eventbus/include
-          - $(SRCROOT)/SharedDependencies/Sources/glib/include
-          - $(SRCROOT)/SharedDependencies/Sources/httplib/include
-          - $(SRCROOT)/SharedDependencies/Sources/inih/include
-          - $(SRCROOT)/SharedDependencies/Sources/jwt/include
-          - $(SRCROOT)/SharedDependencies/Sources/libchdr/include
-          - $(SRCROOT)/SharedDependencies/Sources/libslirp/include
-          - $(SRCROOT)/SharedDependencies/Sources/lodepng/include
-          - $(SRCROOT)/SharedDependencies/Sources/magic_enum/include
-          - $(SRCROOT)/SharedDependencies/Sources/metal_cpp/include
-          - $(SRCROOT)/SharedDependencies/Sources/microprofile/include
-          - $(SRCROOT)/SharedDependencies/Sources/miniz/include
-          - $(SRCROOT)/SharedDependencies/Sources/nihstro/include
-          - $(SRCROOT)/SharedDependencies/Sources/nlohmann/include
-          - $(SRCROOT)/SharedDependencies/Sources/oaknut/include
-          - $(SRCROOT)/SharedDependencies/Sources/stb/include
-          - $(SRCROOT)/SharedDependencies/Sources/toml/include
-          - $(SRCROOT)/SharedDependencies/Sources/tsl/include
-          - $(SRCROOT)/SharedDependencies/Sources/xxhash/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/cereal/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/cryptopp/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/dds_ktx/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/eventbus/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/glib/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/httplib/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/inih/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/jwt/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/libchdr/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/libslirp/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/lodepng/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/magic_enum/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/metal_cpp/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/microprofile/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/miniz/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/nihstro/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/nlohmann/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/oaknut/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/stb/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/toml/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/tsl/include
+          - $(SRCROOT)/Modes/Folium/SharedDependencies/Sources/xxhash/include
     dependencies:
       - package: SharedDependencies
 
@@ -76,8 +76,8 @@ targets:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++23"
         # Recursive (/**): melonDS quoted-includes headers that live in include subdirs
         # (e.g. frontend/sem_timedwait.h referenced from frontend/sem_timedwait.cpp).
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Grape/System/include/**"
-        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Grape/System/include/melonDS/bridge.h"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Modes/Folium/Cores/Grape/System/include/**"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/Modes/Folium/Cores/Grape/System/include/melonDS/bridge.h"
 
   Kiwi:
     templates: [Core]
@@ -87,8 +87,8 @@ targets:
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Kiwi/System/include"
-        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Kiwi/System/include/gambatte/bridge.h"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Modes/Folium/Cores/Kiwi/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/Modes/Folium/Cores/Kiwi/System/include/gambatte/bridge.h"
 
   Mandarine:
     templates: [Core]
@@ -98,8 +98,8 @@ targets:
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Mandarine/System/include"
-        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Mandarine/System/include/avocado/bridge.h"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Modes/Folium/Cores/Mandarine/System/include"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/Modes/Folium/Cores/Mandarine/System/include/avocado/bridge.h"
 
   Tomato:
     templates: [Core]
@@ -112,8 +112,8 @@ targets:
         # Recursive: tablegen.cpp DEFINES the ARM7TDMI LUTs (s_opcode_lut_*) and
         # quoted-includes the committed gen_arm.hpp / gen_thumb.hpp from
         # include/nba/arm/tablegen/. It has no main(); it's a real compilation unit.
-        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Cores/Tomato/System/include/**"
-        SWIFT_OBJC_BRIDGING_HEADER: "Cores/Tomato/System/include/nba/bridge.hpp"
+        USER_HEADER_SEARCH_PATHS: "$(SRCROOT)/Modes/Folium/Cores/Tomato/System/include/**"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/Modes/Folium/Cores/Tomato/System/include/nba/bridge.hpp"
         # NanoBoyAdvance builds its ARM opcode LUTs with a 1024-arg template fold
         # expression; raise clang's default 256 nesting limit.
         OTHER_CPLUSPLUSFLAGS: "-fbracket-depth=4096"
