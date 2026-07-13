@@ -16,7 +16,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
     /// The modes the switcher offers. Order = display order.
     static let registry: [AppMode] = [
         AppMode(id: "delta", title: "Delta", subtitle: "NES · SNES · N64 · GB · GBA · DS · Genesis", systemImage: "gamecontroller"),
-        AppMode(id: "folium", title: "Folium", subtitle: "DS · PS1 · GB/GBC · GBA", systemImage: "l2.rectangle.roundedbottom"),
+        AppMode(id: "folium", title: "Folium", subtitle: "DS · PS1 · GB/GBC · GBA", systemImage: "leaf.fill"),
         AppMode(id: "ish", title: "iSH", subtitle: "Linux shell (x86 emulation)", systemImage: "terminal"),
         AppMode(id: "feather", title: "Feather", subtitle: "On-device app signing & install", systemImage: "signature"),
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
