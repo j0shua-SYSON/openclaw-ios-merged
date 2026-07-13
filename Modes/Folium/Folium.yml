@@ -77,7 +77,9 @@ targets:
     templates: [Core]
     sources:
       - path: Cores/Tomato
-        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx"]
+        # tablegen.cpp is NanoBoyAdvance's host-side ARM-table generator, not part
+        # of the emulator library (the generated gen_arm.hpp is committed).
+        excludes: ["**/*.h", "**/*.hpp", "**/*.hh", "**/*.hxx", "System/arm/tablegen/tablegen.cpp"]
     settings:
       base:
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
