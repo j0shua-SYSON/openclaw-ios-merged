@@ -76,13 +76,14 @@ jobs:
           echo "::group::built frameworks"
           find build/Build/Products -type d -name "*.framework" 2>/dev/null | sort || true
           echo "::endgroup::"
-          echo "::group::DeltaMode.framework contents"
-          DM=$(find build/Build/Products -type d -name "DeltaMode.framework" 2>/dev/null | head -1)
+          echo "::group::Delta.framework contents"
+          DM=$(find build/Build/Products -type d -name "Delta.framework" 2>/dev/null | head -1)
           if [ -n "$DM" ]; then
             ls -la "$DM" || true
-            echo "--- otool -L ---"; otool -L "$DM/DeltaMode" 2>/dev/null | grep -E "@rpath|@executable" || true
+            echo "--- Modules ---"; ls -la "$DM/Modules" 2>/dev/null || true
+            echo "--- otool -L ---"; otool -L "$DM/Delta" 2>/dev/null | grep -E "@rpath|@executable" || true
           else
-            echo "DeltaMode.framework NOT produced"
+            echo "Delta.framework NOT produced"
           fi
           echo "::endgroup::"
           exit $rc

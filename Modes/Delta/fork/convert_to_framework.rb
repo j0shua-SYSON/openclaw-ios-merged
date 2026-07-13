@@ -23,17 +23,23 @@ project = Xcodeproj::Project.open(project_path)
 target = project.targets.find { |t| t.name == 'Delta' }
 raise "Delta app target not found in #{project_path}" unless target
 
-puts "Converting target '#{target.name}' -> DeltaMode.framework ..."
+puts "Converting target '#{target.name}' -> Delta.framework ..."
 
 # ---------------------------------------------------------------------------
 # 1. Flip the app target into a framework.
+#    Bundle name MUST equal the Swift/Clang module name (Delta): for a mixed
+#    ObjC+Swift framework, Clang locates the underlying ObjC module by *bundle
+#    name* (Delta.framework -> `framework module Delta`). A mismatched product
+#    name (e.g. DeltaMode.framework) yields "Unable to find module dependency:
+#    'Delta'". Keeping the module "Delta" also keeps storyboards' customModule
+#    and the scene manifest resolving. Target keeps its name "Delta" so the
+#    CocoaPods (Pods-Delta) integration and the shared scheme stay wired.
 # ---------------------------------------------------------------------------
-target.name = 'DeltaMode'
 target.product_type = 'com.apple.product-type.framework'
 
 product_ref = target.product_reference
-product_ref.name = 'DeltaMode.framework'
-product_ref.path = 'DeltaMode.framework'
+product_ref.name = 'Delta.framework'
+product_ref.path = 'Delta.framework'
 product_ref.explicit_file_type = 'wrapper.framework'
 product_ref.include_in_index = '0'
 
@@ -43,7 +49,7 @@ product_ref.include_in_index = '0'
 target.build_configurations.each do |config|
   s = config.build_settings
 
-  s['PRODUCT_NAME'] = 'DeltaMode'
+  s['PRODUCT_NAME'] = 'Delta'
   s['PRODUCT_MODULE_NAME'] = 'Delta' # storyboards use customModule="Delta"; keep it.
   s['PRODUCT_BUNDLE_IDENTIFIER'] = 'ai.openclawfoundation.deltamode'
   s['MACH_O_TYPE'] = 'mh_dylib'
@@ -122,4 +128,4 @@ target.copy_files_build_phases
       end
 
 project.save
-puts "Done. Product = DeltaMode.framework, module = Delta."
+puts "Done. Product = Delta.framework, module = Delta."

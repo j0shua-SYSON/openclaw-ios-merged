@@ -29,15 +29,14 @@ echo "   neutralized @UIApplicationMain in AppDelegate.swift"
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Delta.xcodeproj"
 
 # 4. Repoint the shared "Delta" scheme's app-target buildable to the framework
-#    (scheme still builds Pods-Delta + the target by UUID; only the display
-#    strings are stale after the rename). macOS/BSD sed.
+#    product. Target keeps its name "Delta" (so BlueprintName is unchanged); only
+#    the produced file name changes from Delta.app to Delta.framework. macOS/BSD sed.
 SCHEME="$CLONE/Delta.xcodeproj/xcshareddata/xcschemes/Delta.xcscheme"
 if [ -f "$SCHEME" ]; then
   sed -i '' \
-    -e 's/BuildableName = "Delta.app"/BuildableName = "DeltaMode.framework"/g' \
-    -e 's/BlueprintName = "Delta"/BlueprintName = "DeltaMode"/g' \
+    -e 's/BuildableName = "Delta.app"/BuildableName = "Delta.framework"/g' \
     "$SCHEME"
-  echo "   repointed Delta.xcscheme -> DeltaMode.framework"
+  echo "   repointed Delta.xcscheme buildable -> Delta.framework"
 fi
 
 echo "== apply_fork: done =="
