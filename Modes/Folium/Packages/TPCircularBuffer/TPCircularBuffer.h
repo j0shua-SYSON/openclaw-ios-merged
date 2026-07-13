@@ -46,19 +46,12 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef __cplusplus
-    extern "C++" {
-        #include <atomic>
-        typedef std::atomic_uint32_t atomicUInt32;
-        #define atomicFetchAdd(a,b) std::atomic_fetch_add(a,b)
-        #define atomicFetchSub(a,b) std::atomic_fetch_sub(a,b)
-    }
-#else
-    #include <stdatomic.h>
-    typedef atomic_uint_fast32_t atomicUInt32;
-    #define atomicFetchAdd(a,b) atomic_fetch_add(a,b)
-    #define atomicFetchSub(a,b) atomic_fetch_sub(a,b)
-#endif
+// Plain integer + __atomic builtins (valid in both C and C++) so the struct stays
+// Swift-importable under C++ interop. A std::atomic member makes the whole struct
+// non-trivial and invisible to Swift ("cannot find type 'TPCircularBuffer'").
+typedef uint32_t atomicUInt32;
+#define atomicFetchAdd(a,b) __atomic_fetch_add((a), (b), __ATOMIC_SEQ_CST)
+#define atomicFetchSub(a,b) __atomic_fetch_sub((a), (b), __ATOMIC_SEQ_CST)
 
 #ifdef __cplusplus
 extern "C" {
