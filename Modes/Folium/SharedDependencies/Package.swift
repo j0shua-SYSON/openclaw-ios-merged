@@ -18,7 +18,13 @@ let package = Package(
     products: [
         .library(name: "SharedDependencies", targets: [
             "SharedDependencies"
-        ])
+        ]),
+        // Dynamic binary frameworks exposed individually so the OpenClaw app can
+        // link+embed them (Xcode won't auto-embed a framework used only transitively
+        // via an embedded framework). Everything else here is static.
+        .library(name: "lib_sdl3", targets: ["lib_sdl3"]),
+        .library(name: "FLAC", targets: ["FLAC"]),
+        .library(name: "ogg", targets: ["ogg"])
     ],
     dependencies: [
         .package(url: "https://github.com/jarrodnorwell/PLzmaSDK", branch: "master"),

@@ -79,6 +79,14 @@ targets:
       - target: OpenClawWatchApp
       - target: FoliumMode
         embed: true
+      # Embed Folium's 3 dynamic binary frameworks (everything else in FoliumMode is
+      # static). They're used only transitively, so Xcode won't auto-embed them.
+      - package: SharedDependencies
+        product: lib_sdl3
+      - package: SharedDependencies
+        product: FLAC
+      - package: SharedDependencies
+        product: ogg
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
