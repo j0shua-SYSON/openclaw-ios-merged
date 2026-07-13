@@ -1,3 +1,4 @@
+import FoliumMode
 import Observation
 import SwiftUI
 import UIKit
@@ -232,11 +233,30 @@ struct ModeSwitcherPanel: View {
 
 // MARK: - Mode container (placeholder until real modes are embedded)
 
+/// Hosts Folium's real UIKit game-library controller inside the SwiftUI mode overlay.
+struct FoliumModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        FoliumHost.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
 
     var body: some View {
+        if self.mode.id == "folium" {
+            // Real Folium. Return to OpenClaw via the 5-tap/3-finger switcher panel.
+            FoliumModeView()
+                .ignoresSafeArea()
+        } else {
+            self.placeholderBody
+        }
+    }
+
+    private var placeholderBody: some View {
         ZStack {
             Color(uiColor: .systemBackground).ignoresSafeArea()
 

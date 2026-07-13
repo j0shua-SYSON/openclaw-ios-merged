@@ -1,4 +1,6 @@
 name: OpenClaw
+include:
+  - Modes/Folium/Folium.yml
 options:
   bundleIdPrefix: ai.openclawfoundation
   deploymentTarget:
@@ -75,6 +77,8 @@ targets:
       # A companion watch application belongs in the standard Watch bundle location.
       # PlugIns is for extension products and breaks paired watch installation.
       - target: OpenClawWatchApp
+      - target: FoliumMode
+        embed: true
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
