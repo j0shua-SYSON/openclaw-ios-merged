@@ -30,12 +30,14 @@
 #ifndef TPCircularBuffer_AudioBufferList_h
 #define TPCircularBuffer_AudioBufferList_h
 
+// Includes must stay OUTSIDE extern "C": under Xcode 26 C++ interop, an #include
+// that resolves to a module import is illegal inside an extern "C" block.
+#include "TPCircularBuffer.h"
+#include <AudioToolbox/AudioToolbox.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "TPCircularBuffer.h"
-#include <AudioToolbox/AudioToolbox.h>
 
 #define kTPCircularBufferCopyAll UINT32_MAX
 
