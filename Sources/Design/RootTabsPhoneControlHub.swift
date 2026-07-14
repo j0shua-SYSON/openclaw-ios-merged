@@ -77,10 +77,10 @@ struct RootTabsPhoneControlHub: View {
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(OpenClawType.subheadSemiBold)
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
-                    .background(Color.primary.opacity(0.06), in: Circle())
+                    .openClawGlassCapsule()
             }
             .padding(.vertical, 6)
             .contentShape(Rectangle())

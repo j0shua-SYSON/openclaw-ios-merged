@@ -222,6 +222,7 @@ struct GatewayProblemDetailsSheet: View {
             }
             .navigationTitle("Connection problem")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Connection problem")
@@ -250,6 +251,7 @@ struct GatewayProblemDetailsSheet: View {
                 }
             }
         }
+        .openClawSheetChrome()
     }
 
     private var ownerSummary: String {

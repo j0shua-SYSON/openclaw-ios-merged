@@ -82,6 +82,7 @@ struct TalkRuntimeIssueDetailsSheet: View {
             }
             .navigationTitle("Talk fallback")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if let onOpenSettings {

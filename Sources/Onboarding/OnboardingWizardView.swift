@@ -384,12 +384,7 @@ struct OnboardingWizardView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(OpenClawBrand.activationPrimaryAction)
-            .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-            .overlay {
-                Capsule(style: .continuous)
-                    .stroke(OpenClawBrand.activationNeutralStroke, lineWidth: 0.6)
-            }
-            .shadow(color: Color.black.opacity(0.08), radius: 14, x: 0, y: 4)
+            .openClawGlassCapsule()
             .accessibilityLabel("Dismiss Keyboard")
             .padding(.trailing, 20)
             .padding(.bottom, 10)

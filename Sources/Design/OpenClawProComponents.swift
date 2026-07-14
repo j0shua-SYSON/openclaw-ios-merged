@@ -203,6 +203,16 @@ private struct OpenClawGlassSurfaceModifier: ViewModifier {
     }
 }
 
+private struct OpenClawGlassCapsuleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: .capsule)
+        } else {
+            content.background(.regularMaterial, in: Capsule(style: .continuous))
+        }
+    }
+}
+
 extension View {
     func proPanelSurface(
         tint: Color? = nil,
@@ -229,6 +239,14 @@ extension View {
 
     func openClawGlassSurface(radius: CGFloat = OpenClawProMetric.controlRadius) -> some View {
         modifier(OpenClawGlassSurfaceModifier(radius: radius))
+    }
+
+    /// Capsule/pill glass surface. The rounded-rect `openClawGlassSurface` couldn't
+    /// clothe capsule or circular controls, so those hand-rolled `.ultraThinMaterial`
+    /// (Onboarding keyboard pill, phone-hub control) — this gives them a sanctioned path.
+    /// A square frame renders as a circle.
+    func openClawGlassCapsule() -> some View {
+        modifier(OpenClawGlassCapsuleModifier())
     }
 }
 
