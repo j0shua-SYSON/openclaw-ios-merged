@@ -41,10 +41,14 @@ perl -0pi -e 's/static\s+(CGColorRef\s+FRCreateCGColorFromHex\s*\()/$1/g' "$APP/
 perl -0pi -e 's/static\s+(CGColorRef\s+FRCreateCGColorFromHex\s*\()/$1/g' "$APP/Utilities/iconPoc.m"
 echo "   made FRCreateCGColorFromHex non-static in iconPoc.h + iconPoc.m"
 
-# 4. Isolate Core Data: point the store at Documents/Feather/Feather.sqlite.
-perl -0pi -e 's/(container = NSPersistentContainer\(name: _name\)\n)/$1\n\t\tif !inMemory {\n\t\t\tlet _dir = URL.documentsDirectory.appendingPathComponent("Feather", isDirectory: true)\n\t\t\ttry? FileManager.default.createDirectory(at: _dir, withIntermediateDirectories: true)\n\t\t\tcontainer.persistentStoreDescriptions.first?.url = _dir.appendingPathComponent("Feather.sqlite")\n\t\t}\n/' \
+# 4. Core Data fixes for the embedded framework:
+#    (a) NSPersistentContainer(name:) looks for the "Feather" model in Bundle.main
+#        (= OpenClaw when embedded) and can't find it -> load persistent stores fails
+#        -> Storage's fatalError. Load the model from the framework bundle instead.
+#    (b) Isolate the store at Documents/Feather/Feather.sqlite.
+perl -0pi -e 's/container = NSPersistentContainer\(name: _name\)\n/container = {\n\t\t\tif let _url = Bundle(for: Storage.self).url(forResource: "Feather", withExtension: "momd"),\n\t\t\t   let _model = NSManagedObjectModel(contentsOf: _url) {\n\t\t\t\treturn NSPersistentContainer(name: "Feather", managedObjectModel: _model)\n\t\t\t}\n\t\t\treturn NSPersistentContainer(name: "Feather")\n\t\t}()\n\t\tif !inMemory {\n\t\t\tlet _dir = URL.documentsDirectory.appendingPathComponent("Feather", isDirectory: true)\n\t\t\ttry? FileManager.default.createDirectory(at: _dir, withIntermediateDirectories: true)\n\t\t\tcontainer.persistentStoreDescriptions.first?.url = _dir.appendingPathComponent("Feather.sqlite")\n\t\t}\n/' \
   "$APP/Backend/Storage/Storage.swift"
-echo "   redirected Core Data store -> Documents/Feather/Feather.sqlite"
+echo "   loaded Core Data model from framework bundle + isolated store -> Documents/Feather/"
 
 # 4b. Redirect Feather's own-bundle asset/resource lookups from Bundle.main (which
 #     is OpenClaw.app when embedded) to the Feather.framework bundle. Feather has no

@@ -203,6 +203,13 @@ targets:
           - CFBundleURLName: ai.openclawfoundation.app
             CFBundleURLSchemes:
               - "$(OPENCLAW_URL_SCHEME)"
+          # Delta mode: Google Sign-In (Delta Sync via Harmony) reads its reversed
+          # client-id URL scheme from Bundle.main; without it GIDSignIn throws an
+          # uncaught exception and aborts. Both of Delta's Google client schemes.
+          - CFBundleURLName: com.rileytestut.Delta.GoogleSignIn
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.457607414709-7oc45nq59frd7rre6okq22fafftd55g1
+              - com.googleusercontent.apps.457607414709-5puj6lcv779gpu3ql43e6k3smjj40dmu
         CFBundleShortVersionString: "$(OPENCLAW_MARKETING_VERSION)"
         OpenClawCanonicalVersion: "$(OPENCLAW_IOS_VERSION)"
         OpenClawGitCommit: "$(OPENCLAW_GIT_COMMIT)"

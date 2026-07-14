@@ -769,6 +769,12 @@ struct OpenClawApp: App {
                 .zIndex(3)
             }
             .onReceive(NotificationCenter.default.publisher(for: .openClawShowModeSwitcher)) { _ in
+                // The signal may come from a mode's own Settings (e.g. Delta), which is
+                // presented as a modal over our SwiftUI overlays — dismiss it first, or
+                // the switcher panel renders hidden behind it. (No-op from the host.)
+                for window in Self.connectedWindows() {
+                    window.rootViewController?.dismiss(animated: false)
+                }
                 withAnimation(.spring(duration: 0.3)) { self.modeManager.panelVisible = true }
             }
         }

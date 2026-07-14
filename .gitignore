@@ -47,3 +47,6 @@ LocalSigning.xcconfig
 
 # --- Isolated git worktree for the concurrent UI-polish session ---
 /.worktrees/
+
+# --- Local signing tool (Windows zsign binary; not part of the app) ---
+/zsign-windows-x64/
