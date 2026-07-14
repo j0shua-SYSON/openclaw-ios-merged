@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Install OpenClaw</title>
+<style>
+  :root { --accent: #7c6cf0; --accent2: #a78bfa; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+    color: #fff; -webkit-text-size-adjust: 100%;
+    background: radial-gradient(130% 120% at 50% 0%, #271c4d 0%, #100c22 52%, #060510 100%);
+  }
+  .card {
+    width: 100%; max-width: 400px; text-align: center;
+    background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 28px; padding: 40px 28px 30px; backdrop-filter: blur(22px);
+    box-shadow: 0 34px 90px rgba(0,0,0,0.55);
+  }
+  .mark {
+    width: 90px; height: 90px; margin: 0 auto 22px; border-radius: 23px; font-size: 46px;
+    background: linear-gradient(140deg, var(--accent), var(--accent2));
+    display: grid; place-items: center; box-shadow: 0 14px 44px rgba(124,108,240,0.5);
+  }
+  h1 { font-size: 31px; font-weight: 800; letter-spacing: -0.02em; }
+  .sub { margin-top: 6px; color: rgba(255,255,255,0.55); font-size: 15px; }
+  .chips { margin: 18px 0 26px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.82); }
+  #ios-hint { display: none; margin-bottom: 16px; font-size: 13px; color: #ffd27a;
+    background: rgba(255,210,122,0.12); border-radius: 13px; padding: 11px 13px; line-height: 1.5; }
+  .btn {
+    display: block; text-decoration: none; color: #fff; font-size: 18px; font-weight: 700; padding: 17px;
+    border-radius: 16px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 14px 32px rgba(124,108,240,0.45); transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active { transform: scale(0.98); box-shadow: 0 7px 18px rgba(124,108,240,0.4); }
+  .steps { margin-top: 22px; text-align: left; color: rgba(255,255,255,0.6); font-size: 13.5px; line-height: 1.75; }
+  .steps b { color: rgba(255,255,255,0.92); font-weight: 600; }
+  .note { margin-top: 22px; font-size: 11.5px; color: rgba(255,255,255,0.36); line-height: 1.5; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark">🐾</div>
+    <h1>OpenClaw</h1>
+    <div class="sub">Personal AI, with emulator modes built in</div>
+    <div class="chips"><span class="chip">Folium</span><span class="chip">Delta</span><span class="chip">Feather</span></div>
+    <div id="ios-hint">Open this page in <b>Safari</b> on your iPhone or iPad to install.</div>
+    <a class="btn" href="itms-services://?action=download-manifest&amp;url=https://github.com/j0shua-SYSON/openclaw-ios-merged/releases/download/ota/manifest.plist">Install OpenClaw</a>
+    <div class="steps">
+      <b>1.</b>&nbsp; Tap <b>Install</b> — iOS asks to install the app; confirm.<br>
+      <b>2.</b>&nbsp; After it installs, open <b>Settings → General → VPN &amp; Device Management</b> and <b>Trust</b> “VIETNAM AIRLINES JSC”.<br>
+      <b>3.</b>&nbsp; Launch OpenClaw. Switch modes via <b>Settings → About → tap “OpenClaw” 5×</b>.
+    </div>
+    <div class="note">Enterprise-signed for personal use · not affiliated with the original app authors.</div>
+  </div>
+  <script>
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isIOS) { document.getElementById('ios-hint').style.display = 'block'; }
+  </script>
+</body>
+</html>
