@@ -42,8 +42,10 @@ find "$APP" -name "*.swift" -type f -exec perl -0pi -e \
    s/UIColor\(named:\s*"([^"]+)"\)/UIColor(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
    s/UIImage\(named:\s*"([^"]+)"\)/UIImage(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
    s/(?<![A-Za-z])Color\(\s*"([^"]+)"\s*\)/Color("$1", bundle: Bundle.deltaResources)/g;
-   s/(?<![A-Za-z])Image\(\s*"([^"]+)"\s*\)/Image("$1", bundle: Bundle.deltaResources)/g' {} +
-echo "   redirected Bundle.main resource + asset-catalog lookups -> Bundle.deltaResources"
+   s/(?<![A-Za-z])Image\(\s*"([^"]+)"\s*\)/Image("$1", bundle: Bundle.deltaResources)/g;
+   s/UIStoryboard\(name:\s*("[^"]+"),\s*bundle:\s*(?:\.main|nil)\)/UIStoryboard(name: $1, bundle: Bundle.deltaResources)/g;
+   s/UINib\(nibName:\s*("[^"]+"),\s*bundle:\s*(?:\.main|nil)\)/UINib(nibName: $1, bundle: Bundle.deltaResources)/g' {} +
+echo "   redirected Bundle.main resource + asset-catalog + storyboard/nib lookups -> Bundle.deltaResources"
 
 # 3. Convert the app target into DeltaMode.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Delta.xcodeproj"
