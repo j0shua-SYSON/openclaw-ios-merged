@@ -47,6 +47,15 @@ find "$APP" -name "*.swift" -type f -exec perl -0pi -e \
    s/UINib\(nibName:\s*("[^"]+"),\s*bundle:\s*(?:\.main|nil)\)/UINib(nibName: $1, bundle: Bundle.deltaResources)/g' {} +
 echo "   redirected Bundle.main resource + asset-catalog + storyboard/nib lookups -> Bundle.deltaResources"
 
+# 2c. Inject an "App Switcher" row at the top of Delta's Settings so the user can
+#     return to OpenClaw / switch apps from *inside* Delta (OpenClaw's host settings
+#     aren't reachable while a mode is presented). It posts the process-wide
+#     OpenClawShowModeSwitcher notification that OpenClawApp observes — Delta runs in
+#     OpenClaw's process, so the plain NotificationCenter post crosses the boundary.
+perl -0pi -e 's/(Form \{\n)( +)(PatreonSection\(\))/$1$2Section {\n$2    Button {\n$2        NotificationCenter.default.post(name: Notification.Name("OpenClawShowModeSwitcher"), object: nil)\n$2    } label: {\n$2        Label("App Switcher", systemImage: "square.on.square.dashed")\n$2    }\n$2} footer: {\n$2    Text("Switch to another app embedded in OpenClaw.")\n$2}\n$2$3/' \
+  "$APP/Settings/SettingsView.swift"
+echo "   injected 'App Switcher' row into Delta Settings (SettingsView.swift)"
+
 # 3. Convert the app target into DeltaMode.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Delta.xcodeproj"
 
