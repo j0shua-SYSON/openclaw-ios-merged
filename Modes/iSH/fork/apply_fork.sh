@@ -27,6 +27,21 @@ echo "   copied iSHLauncher.{h,m}, iSHMode-Info.plist"
 perl -0pi -e 's/\bint\s+main\s*\(/int ish_disabled_main(/g' "$APP/main.m"
 echo "   neutralized main() in app/main.m"
 
+# 2b. AppGroup.m reads the host's own entitlements via &_mh_execute_header to locate
+#     its app-group container. `_mh_execute_header` is defined only in an *executable*;
+#     linked into a framework it is undefined ("Undefined symbols: __mh_execute_header")
+#     and fails the link. Use the main image's header via dyld instead — image index 0
+#     is always the main executable (OpenClaw when embedded), so this reads the host
+#     app's entitlements, exactly what AppGroup wants. OpenClaw carries no iSH app-group,
+#     so ContainerURL() falls back to the app data container (rootfs isolation to
+#     Documents/iSH is handled separately in milestone 2).
+perl -0pi -e 's{#import <mach-o/ldsyms.h>}{#import <mach-o/ldsyms.h>\n#import <mach-o/dyld.h>};
+              s{&_mh_execute_header}{(const struct mach_header_64 *)_dyld_get_image_header(0)}g' \
+  "$APP/AppGroup.m"
+grep -q "_dyld_get_image_header(0)" "$APP/AppGroup.m" \
+  || { echo "ERROR: AppGroup.m _mh_execute_header patch did not apply"; exit 1; }
+echo "   patched AppGroup.m to read the host image header via dyld (framework-safe)"
+
 # 3. Convert the iSH app target -> iSH.framework (drops FileProvider, adds launcher).
 ruby "$FORK/convert_to_framework.rb" "$CLONE/iSH.xcodeproj"
 

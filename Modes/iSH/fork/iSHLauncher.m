@@ -18,7 +18,7 @@
         // Should not happen once the storyboard is bundled; fail soft rather than crash
         // OpenClaw's process during mode entry.
         UIViewController *placeholder = [[UIViewController alloc] init];
-        placeholder.view.backgroundColor = UIColor.systemBackgroundColor;
+        placeholder.view.backgroundColor = UIColor.blackColor;
         return placeholder;
     }
     return root;
