@@ -6,6 +6,8 @@ name: iSH build (validate toolchain)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ish-mode]
 
 env:
   ISH_REPO: https://github.com/ish-app/ish.git
