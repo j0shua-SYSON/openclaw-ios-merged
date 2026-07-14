@@ -41,6 +41,7 @@ find "$APP" -name "*.swift" -type f -exec perl -0pi -e \
    s/Bundle\.main\.loadNibNamed\(/Bundle.deltaResources.loadNibNamed(/g;
    s/UIColor\(named:\s*"([^"]+)"\)/UIColor(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
    s/UIImage\(named:\s*"([^"]+)"\)/UIImage(named: "$1", in: Bundle.deltaResources, compatibleWith: nil)/g;
+   s/#imageLiteral\(resourceName:\s*"([^"]+)"\)/(UIImage(named: "$1", in: Bundle.deltaResources, compatibleWith: nil) ?? UIImage())/g;
    s/(?<![A-Za-z])Color\(\s*"([^"]+)"\s*\)/Color("$1", bundle: Bundle.deltaResources)/g;
    s/(?<![A-Za-z])Image\(\s*"([^"]+)"\s*\)/Image("$1", bundle: Bundle.deltaResources)/g;
    s/UIStoryboard\(name:\s*("[^"]+"),\s*bundle:\s*(?:\.main|nil)\)/UIStoryboard(name: $1, bundle: Bundle.deltaResources)/g;
