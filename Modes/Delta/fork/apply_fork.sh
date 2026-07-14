@@ -57,6 +57,24 @@ perl -0pi -e 's/(Form \{\n)( +)(PatreonSection\(\))/$1$2Section {\n$2    Button 
   "$APP/Settings/SettingsView.swift"
 echo "   injected 'App Switcher' row into Delta Settings (SettingsView.swift)"
 
+# 2d. Fix game audio being silent when embedded. OpenClaw keeps the shared
+#     AVAudioSession in .playAndRecord with a *voice* mode (.voiceChat for Talk,
+#     .measurement for wake-word) and leaves it active. DeltaCore's setDeltaCategory()
+#     uses the 2-arg setCategory(_:options:) form, which does NOT reset the mode — so
+#     game audio renders through iOS voice processing routed to the earpiece receiver
+#     and is effectively muted (DeltaCore's own overrideOutputAudioPort(.speaker) can't
+#     undo a voice-processing session). Forcing mode: .default gives Delta a clean
+#     playback session so its speaker-routing works. Standalone behavior is unchanged
+#     (there the mode was already effectively .default). Guarded: if the upstream call
+#     format changes so nothing matches, fail the build instead of shipping no sound.
+AUDIO_PATCHED=0
+while IFS= read -r -d '' f; do
+  perl -0pi -e 's/setCategory\(\.playAndRecord,\s+options:/setCategory(.playAndRecord, mode: .default, options:/g' "$f"
+  if grep -q 'setCategory(.playAndRecord, mode: .default, options:' "$f"; then AUDIO_PATCHED=1; fi
+done < <(find "$CLONE" -name "AudioManager.swift" -type f -exec grep -lZ setDeltaCategory {} +)
+[ "$AUDIO_PATCHED" = 1 ] || { echo "ERROR: DeltaCore audio mode patch did not apply (setDeltaCategory format changed?)"; exit 1; }
+echo "   forced AVAudioSession mode: .default in DeltaCore AudioManager (embedded audio routing)"
+
 # 3. Convert the app target into DeltaMode.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Delta.xcodeproj"
 
