@@ -14,6 +14,7 @@ on:
       # affect the OpenClaw build until project.yml + ios-build.yml wire them in.
       - "Modes/Delta/**"
       - "Modes/Feather/**"
+      - "Modes/iSH/**"
 
 concurrency:
   group: ios-build-${{ github.ref }}
@@ -27,6 +28,8 @@ env:
   DELTA_SHA: adee3c5c13a5fd944d0389cdbdd526cdcff2e6e6
   FEATHER_REPO: https://github.com/claration/Feather.git
   FEATHER_SHA: 82a0087b28da3db5665c0a1e255acfe0151c4caa
+  ISH_REPO: https://github.com/ish-app/ish.git
+  ISH_SHA: 997642f3787cc63e65f7134b7bb0362c74bff8e0
 
 jobs:
   build:
@@ -179,6 +182,58 @@ jobs:
         with:
           path: Vendor/FeatherPrebuilt
           key: feather-fw-v2-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
+
+      # iSH mode — the x86/Linux emulator forked into iSH.framework (Modes/iSH/fork),
+      # built by meson/ninja inside Xcode. The one dylib bakes in the emulator, the ObjC
+      # app layer, libarchive, the Alpine rootfs (root.tar.gz), and the hterm terminal.
+      # Cached on the iSH SHA + fork scripts.
+      - name: Restore iSH framework cache
+        id: ish-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Vendor/iSHPrebuilt
+          key: ish-fw-v1-${{ env.ISH_SHA }}-${{ hashFiles('Modes/iSH/fork/**') }}
+
+      - name: Build iSH framework
+        if: steps.ish-cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          # iSH's meson build links with -fuse-ld=lld, so llvm+lld are required.
+          brew install llvm lld ninja libarchive meson
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$ISH_REPO" ish
+          cd ish
+          git checkout "$ISH_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          cd ..
+          sudo gem install xcodeproj --no-document
+          chmod +x Modes/iSH/fork/apply_fork.sh
+          bash Modes/iSH/fork/apply_fork.sh "$PWD/ish" "$PWD/Modes/iSH/fork"
+          cd ish
+          set -o pipefail
+          xcodebuild build \
+            -project iSH.xcodeproj \
+            -scheme iSH \
+            -arch arm64 -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: " || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::iSH build failed"; exit 1; }
+          cd ..
+          FW=$(find ish/build/Build/Products -type d -name "iSH.framework" | grep -iv EagerLinking | while read d; do [ -f "$d/iSH" ] && echo "$d"; done | head -1)
+          [ -n "$FW" ] || { echo "::error::iSH.framework (with binary) not found"; exit 1; }
+          mkdir -p Vendor/iSHPrebuilt
+          cp -RL "$FW" Vendor/iSHPrebuilt/
+          rm -rf ish
+          echo "--- Vendor/iSHPrebuilt/iSH.framework ---"; ls Vendor/iSHPrebuilt/iSH.framework | head
+
+      - name: Save iSH framework cache
+        if: steps.ish-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Vendor/iSHPrebuilt
+          key: ish-fw-v1-${{ env.ISH_SHA }}-${{ hashFiles('Modes/iSH/fork/**') }}
 
       - name: Generate build/Version.xcconfig
         run: |

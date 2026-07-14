@@ -26,3 +26,11 @@
 @interface FeatherLauncher : NSObject
 + (UIViewController * _Nonnull)makeRootViewController;
 @end
+
+// iSH mode — same forward-declared pattern. iSH is all ObjC/C (no Swift module), but
+// the launcher is still exposed only via this bare declaration; the class is resolved
+// from the embedded iSH.framework at link time. iSHLauncher boots the emulated Linux
+// kernel before returning the terminal VC. See Modes/iSH/fork/iSHLauncher.h.
+@interface iSHLauncher : NSObject
++ (UIViewController * _Nonnull)makeRootViewController;
+@end

@@ -141,6 +141,14 @@ targets:
       - framework: Vendor/FeatherPrebuilt/OpenSSL.framework
         embed: true
         link: false
+
+      # iSH mode — prebuilt dynamic framework (see Modes/iSH/fork). iSH's C emulator
+      # (built by meson/ninja) + its ObjC app layer + libarchive all bake into this one
+      # dylib; the Alpine rootfs (root.tar.gz) and terminal (hterm) are bundled inside
+      # it. iSH.framework is linked (OpenClaw's bridging header forward-declares
+      # iSHLauncher, resolved from it at link time). Built into Vendor/iSHPrebuilt by CI.
+      - framework: Vendor/iSHPrebuilt/iSH.framework
+        embed: true
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
