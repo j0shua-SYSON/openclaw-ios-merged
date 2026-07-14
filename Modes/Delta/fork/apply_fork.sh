@@ -67,12 +67,16 @@ echo "   injected 'App Switcher' row into Delta Settings (SettingsView.swift)"
 #     playback session so its speaker-routing works. Standalone behavior is unchanged
 #     (there the mode was already effectively .default). Guarded: if the upstream call
 #     format changes so nothing matches, fail the build instead of shipping no sound.
-AUDIO_PATCHED=0
-while IFS= read -r -d '' f; do
-  perl -0pi -e 's/setCategory\(\.playAndRecord,\s+options:/setCategory(.playAndRecord, mode: .default, options:/g' "$f"
-  if grep -q 'setCategory(.playAndRecord, mode: .default, options:' "$f"; then AUDIO_PATCHED=1; fi
-done < <(find "$CLONE" -name "AudioManager.swift" -type f -exec grep -lZ setDeltaCategory {} +)
-[ "$AUDIO_PATCHED" = 1 ] || { echo "ERROR: DeltaCore audio mode patch did not apply (setDeltaCategory format changed?)"; exit 1; }
+AUDIO_MGR="$CLONE/Cores/DeltaCore/DeltaCore/Emulator Core/Audio/AudioManager.swift"
+if [ ! -f "$AUDIO_MGR" ]; then
+  # Fallback in case the submodule layout ever changes; no -Z/null (BSD grep on the
+  # macOS runner doesn't null-separate the way GNU does — that broke the first attempt).
+  AUDIO_MGR="$(find "$CLONE" -type f -name AudioManager.swift -path '*DeltaCore*' 2>/dev/null | head -n 1 || true)"
+fi
+[ -n "${AUDIO_MGR:-}" ] && [ -f "$AUDIO_MGR" ] || { echo "ERROR: DeltaCore AudioManager.swift not found in clone (audio fix)"; exit 1; }
+perl -0pi -e 's/setCategory\(\.playAndRecord,\s+options:/setCategory(.playAndRecord, mode: .default, options:/g' "$AUDIO_MGR"
+grep -q 'setCategory(.playAndRecord, mode: .default, options:' "$AUDIO_MGR" \
+  || { echo "ERROR: DeltaCore audio mode patch did not apply (setDeltaCategory format changed?)"; exit 1; }
 echo "   forced AVAudioSession mode: .default in DeltaCore AudioManager (embedded audio routing)"
 
 # 3. Convert the app target into DeltaMode.framework.
