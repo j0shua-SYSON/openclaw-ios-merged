@@ -126,7 +126,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Vendor/FeatherPrebuilt
-          key: feather-fw-v1-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
+          key: feather-fw-v2-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
 
       - name: Build Feather frameworks
         if: steps.feather-cache.outputs.cache-hit != 'true'
@@ -161,8 +161,11 @@ jobs:
           PRODUCTS="feather/build/Build/Products/Debug-iphoneos"
           mkdir -p Vendor/FeatherPrebuilt
           for fw in Feather OpenSSL; do
-            if [ -d "$PRODUCTS/$fw.framework" ]; then
-              cp -R "$PRODUCTS/$fw.framework" Vendor/FeatherPrebuilt/
+            if [ -e "$PRODUCTS/$fw.framework" ]; then
+              # -L: Feather.framework in Products is a symlink to the installed copy
+              # (the target deploys to _build/Library/Frameworks); dereference it so
+              # we copy the real framework, not a dangling symlink after `rm -rf`.
+              cp -RL "$PRODUCTS/$fw.framework" Vendor/FeatherPrebuilt/
             else
               echo "::error::Feather framework missing: $fw.framework"; exit 1
             fi
@@ -175,7 +178,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: Vendor/FeatherPrebuilt
-          key: feather-fw-v1-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
+          key: feather-fw-v2-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
 
       - name: Generate build/Version.xcconfig
         run: |
