@@ -436,7 +436,7 @@ private struct SettingsChannelRow: View {
                 Image(systemName: self.actionMenuIcon(account))
                     .font(OpenClawType.captionSemiBold)
             }
-            .buttonStyle(.bordered)
+            .openClawGlassButton()
             .controlSize(.mini)
             .disabled(!self.canAdmin || self.isBusy(account))
         }

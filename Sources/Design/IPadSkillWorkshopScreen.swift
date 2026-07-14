@@ -1030,7 +1030,7 @@ private struct IPadSkillProposalKanbanCard: View {
                             .font(OpenClawType.captionSemiBold)
                     }
                     .accessibilityLabel("Apply Proposal")
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.mini)
                     .disabled(!self.canApplyProposalMutations || self.isBusy)
 
@@ -1039,7 +1039,7 @@ private struct IPadSkillProposalKanbanCard: View {
                             .font(OpenClawType.captionSemiBold)
                     }
                     .accessibilityLabel("Reject Proposal")
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.mini)
                     .disabled(!self.canApplyProposalMutations || self.isBusy)
                 }
@@ -1049,7 +1049,7 @@ private struct IPadSkillProposalKanbanCard: View {
                         .font(OpenClawType.captionSemiBold)
                 }
                 .accessibilityLabel("Inspect Proposal")
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
                 .controlSize(.mini)
                 .disabled(self.isInspecting)
             }

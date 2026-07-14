@@ -83,7 +83,7 @@ struct TalkPermissionPromptView: View {
                             .font(OpenClawType.subheadSemiBold)
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .openClawGlassButton(prominent: true)
                 .disabled(self.state == .requestingUpgrade)
 
                 Button {
@@ -92,7 +92,7 @@ struct TalkPermissionPromptView: View {
                     Label("Retry", systemImage: "arrow.triangle.2.circlepath")
                         .font(OpenClawType.subheadSemiBold)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
             }
         }
         .padding(self.style == .card || self.style == .sheet ? 16 : 0)

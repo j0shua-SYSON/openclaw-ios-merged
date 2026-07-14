@@ -69,8 +69,7 @@ struct TerminalHubScreen: View {
                     Text("Open Gateway Settings")
                         .font(OpenClawType.subheadSemiBold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(OpenClawBrand.accent)
+                .openClawGlassButton(prominent: true, tint: OpenClawBrand.accent)
             }
         }
         .padding(24)

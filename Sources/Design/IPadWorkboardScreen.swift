@@ -1060,7 +1060,7 @@ private struct IPadWorkboardKanbanCard: View {
                         Image(systemName: "bubble.left.and.text.bubble.right")
                     }
                     .accessibilityLabel("Open Session")
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.mini)
                 }
 
@@ -1086,7 +1086,7 @@ private struct IPadWorkboardKanbanCard: View {
                         .frame(width: 22, height: 22)
                 }
                 .accessibilityLabel("Card Actions")
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
                 .controlSize(.mini)
                 .disabled(self.isBusy)
 

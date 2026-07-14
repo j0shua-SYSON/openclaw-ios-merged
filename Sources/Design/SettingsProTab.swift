@@ -441,14 +441,14 @@ struct HostedPushRelayDisclosureSheet: View {
                         .font(OpenClawType.subheadSemiBold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OpenClawPrimaryActionButtonStyle())
                 Button(role: .cancel) {
                     self.dismiss()
                 } label: {
                     Text("Not Now")
                         .font(OpenClawType.subheadSemiBold)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OpenClawSecondaryActionButtonStyle())
                 .frame(maxWidth: .infinity)
             }
         }

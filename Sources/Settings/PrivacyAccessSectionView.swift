@@ -176,7 +176,7 @@ struct PrivacyAccessSectionView: View {
                     Text(actionTitle)
                         .font(OpenClawType.footnoteSemiBold)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
                 .accessibilityIdentifier("privacy-access-\(identifier)-action")
             }
         }

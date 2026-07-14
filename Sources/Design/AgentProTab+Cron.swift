@@ -110,7 +110,7 @@ extension AgentProTab {
                     }
                     .disabled(busy || !self.liveGatewayConnected)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
                 .controlSize(.mini)
             }
             Spacer(minLength: 8)

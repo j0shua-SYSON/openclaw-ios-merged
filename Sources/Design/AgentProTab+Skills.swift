@@ -45,7 +45,7 @@ extension AgentProTab {
                     }
                     .disabled(self.skillMutationBusy || self.agentSkillFilter == nil)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
                 .controlSize(.small)
 
                 if let skillMutationStatusText {
@@ -119,7 +119,7 @@ extension AgentProTab {
                     } label: {
                         Image(systemName: "magnifyingglass")
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.small)
                     .disabled(self.clawHubLoading || !self.liveGatewayConnected)
                     .accessibilityLabel("Search ClawHub")
@@ -178,7 +178,7 @@ extension AgentProTab {
             } label: {
                 Image(systemName: installing ? "hourglass" : "square.and.arrow.down")
             }
-            .buttonStyle(.bordered)
+            .openClawGlassButton()
             .controlSize(.small)
             .disabled(installing || !self.skillConfigBusyKeys.isEmpty)
             .accessibilityLabel(
@@ -329,7 +329,7 @@ extension AgentProTab {
                         } label: {
                             Image(systemName: "wrench.and.screwdriver")
                         }
-                        .buttonStyle(.bordered)
+                        .openClawGlassButton()
                         .controlSize(.mini)
                         .disabled(self.isSkillConfigBusy(skill))
                         .accessibilityLabel(
@@ -342,7 +342,7 @@ extension AgentProTab {
                     } label: {
                         Image(systemName: "slider.horizontal.3")
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.mini)
                     .accessibilityLabel(
                         String(
@@ -513,7 +513,7 @@ extension AgentProTab {
                             Label("Save key", systemImage: "key")
                                 .font(OpenClawType.captionSemiBold)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .openClawGlassButton(prominent: true)
                         .controlSize(.small)
                         .disabled(self.isSkillConfigBusy(skill))
                         if let homepage = skill.homepageURL {
@@ -597,7 +597,7 @@ extension AgentProTab {
                         Label(install.label, systemImage: "wrench.and.screwdriver")
                             .font(OpenClawType.captionSemiBold)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.small)
                     .disabled(self.isSkillConfigBusy(skill) || install.id == nil)
                 }

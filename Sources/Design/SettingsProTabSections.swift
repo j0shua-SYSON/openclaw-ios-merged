@@ -1120,7 +1120,7 @@ extension SettingsProTab {
                         }
                     }
                     .font(OpenClawType.captionSemiBold)
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .disabled(self.connectingGateway != nil)
                 } else {
                     Text(availability.actionTitle)

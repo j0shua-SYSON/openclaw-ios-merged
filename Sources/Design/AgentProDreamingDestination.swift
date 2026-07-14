@@ -183,7 +183,7 @@ struct AgentProDreamingDestination: View {
                     } label: {
                         Image(systemName: self.overviewLoading ? "hourglass" : "arrow.clockwise")
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.small)
                     .disabled(self.overviewLoading)
                     .accessibilityLabel("Refresh dreaming")
@@ -201,7 +201,7 @@ struct AgentProDreamingDestination: View {
                                 Image(systemName: self.dreamActionBusy == action ? "hourglass" : action.icon)
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .openClawGlassButton()
                         .controlSize(.small)
                         .disabled(!self.gatewayConnected || self.dreamActionBusy != nil)
                     }

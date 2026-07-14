@@ -146,9 +146,8 @@ struct TalkProTab: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .openClawGlassButton(prominent: true, tint: self.state.color)
                 .controlSize(.large)
-                .tint(self.state.color)
                 .disabled(self.state.primaryAction == .waiting)
             }
             .frame(maxWidth: .infinity)
