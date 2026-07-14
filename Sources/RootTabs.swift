@@ -9,6 +9,7 @@ struct RootTabs: View {
     @Environment(GatewayConnectionController.self) private var gatewayController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.rootTabsUserInterfaceIdiomOverride) private var userInterfaceIdiomOverride
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("screen.preventSleep") private var preventSleep: Bool = true
@@ -282,7 +283,10 @@ struct RootTabs: View {
                     .overlay(alignment: .trailing) {
                         self.sidebarVerticalSeparator
                     }
-                    .shadow(color: .black.opacity(0.26), radius: 18, x: 8, y: 0)
+                    // Drawer opens from the leading edge, so the shadow must fall toward
+                    // the trailing edge — negate x in RTL or it lands under the sidebar.
+                    .shadow(color: .black.opacity(0.26), radius: 18,
+                            x: self.layoutDirection == .rightToLeft ? -8 : 8, y: 0)
                     .transition(.move(edge: .leading).combined(with: .opacity))
                     .zIndex(1)
             }
@@ -630,7 +634,7 @@ struct RootTabs: View {
     private var phoneChatReturnAction: OpenClawSidebarHeaderAction? {
         guard !self.usesSidebarTabs, let phoneChatReturn else { return nil }
         return OpenClawSidebarHeaderAction(
-            systemName: "chevron.left",
+            systemName: "chevron.backward",
             accessibilityLabel: .verbatim(
                 String(
                     format: String(localized: "Back to %@"),

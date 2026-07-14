@@ -853,7 +853,7 @@ extension SettingsProTab {
                     SettingsIcon(systemName: icon, color: color)
                 }
                 Spacer()
-                Image(systemName: "arrow.up.right")
+                Image(systemName: "arrow.up.forward")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
             }

@@ -378,7 +378,7 @@ extension AgentProTab {
                 .foregroundStyle(color)
                 .lineLimit(1)
             if showsChevron {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(OpenClawType.captionSemiBold)
                     .foregroundStyle(.secondary)
             }
@@ -433,7 +433,7 @@ extension AgentProTab {
                     Spacer()
                     ProValuePill(value: value, color: color)
                     if showsChevron {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(OpenClawType.captionSemiBold)
                             .foregroundStyle(.secondary)
                     }

@@ -341,7 +341,7 @@ extension View {
 
 struct CommandViewMoreRow: View {
     var body: some View {
-        Label("View More", systemImage: "chevron.right")
+        Label("View More", systemImage: "chevron.forward")
             .font(OpenClawType.subheadBold)
             .foregroundStyle(OpenClawBrand.accent)
             .frame(maxWidth: .infinity)

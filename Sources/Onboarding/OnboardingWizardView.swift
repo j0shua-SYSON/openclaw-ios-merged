@@ -354,7 +354,7 @@ struct OnboardingWizardView: View {
             Button {
                 self.navigateBack()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.backward")
                     .font(OpenClawType.subheadSemiBold)
                     .accessibilityLabel("Back")
             }

@@ -121,7 +121,7 @@ struct OpenClawDocsScreen: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "arrow.up.right")
+                Image(systemName: "arrow.up.forward")
                     .font(OpenClawType.captionBold)
                     .foregroundStyle(.secondary)
             }

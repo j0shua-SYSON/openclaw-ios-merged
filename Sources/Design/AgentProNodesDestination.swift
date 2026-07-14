@@ -160,7 +160,7 @@ struct AgentProNodesDestination: View {
                 .foregroundStyle(Self.presenceColor(entry))
                 .lineLimit(1)
             if showsChevron {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(OpenClawType.caption2Bold)
                     .foregroundStyle(.secondary)
                     .padding(.top, 2)
