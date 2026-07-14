@@ -1,0 +1,52 @@
+name: iSH build (validate toolchain)
+
+# Milestone 1a for the iSH mode embed: prove our CI can do iSH's meson+ninja
+# emulator build at all, on an UNMODIFIED iSH clone, before investing in the
+# app-target -> framework conversion. Manual only; never runs on push.
+
+on:
+  workflow_dispatch:
+
+env:
+  ISH_REPO: https://github.com/ish-app/ish.git
+  ISH_SHA: 997642f3787cc63e65f7134b7bb0362c74bff8e0
+
+jobs:
+  validate:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Clone iSH + submodules
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$ISH_REPO" ish
+          cd ish
+          git checkout "$ISH_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+
+      - name: Install build deps (mirrors iSH CI)
+        run: brew install llvm lld ninja libarchive meson
+
+      - name: Build iSH (unmodified, arm64 device)
+        run: |
+          cd ish
+          set -o pipefail
+          xcodebuild build \
+            -project iSH.xcodeproj \
+            -scheme iSH \
+            -arch arm64 -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|meson|ninja|Compile JavaScript|Download Root" || true
+
+      - name: Diagnostics (always)
+        if: always()
+        run: |
+          cd ish
+          echo "=== last 100 lines of build.log ==="
+          tail -100 build.log 2>/dev/null || echo "(no build.log)"
+          echo "=== build products ==="
+          find build/Build/Products -maxdepth 3 \( -name "*.app" -o -name "*.framework" -o -name "*.a" \) 2>/dev/null | head -60 || true
