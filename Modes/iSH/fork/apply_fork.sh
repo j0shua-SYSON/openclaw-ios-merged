@@ -76,6 +76,19 @@ grep -q 'so start one on first appear' "$APP/TerminalViewController.m" \
   && echo "   auto-start shell session in TerminalViewController.viewDidAppear" \
   || { echo "ERROR: viewDidAppear session auto-start patch did not apply"; exit 1; }
 
+# 2f. Add an "App Switcher" affordance inside iSH's Settings ("About") screen so the
+#     user can always return to OpenClaw even if the 3-finger/5-tap gesture is swallowed
+#     by the terminal. It posts the process-wide OpenClawShowModeSwitcher notification
+#     that OpenClawApp observes (same path Delta's injected row uses). The About screen's
+#     Done button is on the right, so we use the free left nav slot.
+perl -0pi -e 's/(\[self _updateUI\];)(\r?\n)/$1$2    \/\/ OpenClaw: reliable return to the mode switcher from inside iSH (the 3-finger$2    \/\/ gesture can be swallowed by the terminal). Posts the notification OpenClawApp observes.$2    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:\@"Switch App" style:UIBarButtonItemStylePlain target:self action:\@selector(openClawShowModeSwitcher)];$2/' \
+  "$APP/AboutViewController.m"
+perl -0pi -e 's/(\.bootCommand = \[self\.bootCommandField\.text componentsSeparatedByString:\@" "\];)(\r?\n)(\})/$1$2$3$2$2- (void)openClawShowModeSwitcher {$2    [NSNotificationCenter.defaultCenter postNotificationName:\@"OpenClawShowModeSwitcher" object:nil];$2}/' \
+  "$APP/AboutViewController.m"
+grep -q 'openClawShowModeSwitcher' "$APP/AboutViewController.m" \
+  && echo "   added 'Switch App' item to iSH Settings (About)" \
+  || { echo "ERROR: iSH About App-Switcher patch did not apply"; exit 1; }
+
 # 3. Convert the iSH app target -> iSH.framework (drops FileProvider, adds launcher).
 ruby "$FORK/convert_to_framework.rb" "$CLONE/iSH.xcodeproj"
 
