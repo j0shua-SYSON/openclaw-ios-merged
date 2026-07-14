@@ -62,8 +62,18 @@ jobs:
           cd ish
           echo "=== last 120 lines of build.log ==="
           tail -120 build.log 2>/dev/null || echo "(no build.log)"
-          # The real product framework (not the EagerLinkingTBDs stub, which is Headers-only).
-          FW=$(find build/Build/Products -type d -name "iSH.framework" 2>/dev/null | grep -iv "EagerLinking" | head -1)
+          echo "=== ALL iSH.framework dirs (size + top-level contents) ==="
+          find build -type d -name "iSH.framework" 2>/dev/null | while read d; do
+            echo ">>> $(du -sh "$d" 2>/dev/null | cut -f1)  $d"
+            ls "$d" 2>/dev/null | sed 's/^/      /'
+          done
+          echo "=== iSH Mach-O binaries anywhere under build ==="
+          find build -type f -name "iSH" 2>/dev/null | while read f; do echo "  $f : $(file -b "$f" 2>/dev/null)"; done
+          echo "=== resources anywhere under Products ==="
+          find build/Build/Products \( -name "*.storyboardc" -o -name "Assets.car" -o -name "term.html" -o -name "hterm_all.js" \) 2>/dev/null | sed 's/^/  /' | head -20
+          # Pick the framework that actually has a binary as the real one.
+          FW=$(find build -type d -name "iSH.framework" 2>/dev/null | grep -iv "EagerLinking" | while read d; do [ -f "$d/iSH" ] && echo "$d"; done | head -1)
+          [ -z "$FW" ] && FW=$(find build -type d -name "iSH.framework" 2>/dev/null | grep -iv "EagerLinking" | head -1)
           echo "REAL FRAMEWORK: $FW"
           if [ -n "$FW" ]; then
             echo "=== ls -laR (first 100) ==="
