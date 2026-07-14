@@ -128,9 +128,8 @@ struct IPadSkillWorkshopScreen: View {
                         Label("Refresh", systemImage: "arrow.clockwise")
                             .font(OpenClawType.captionSemiBold)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton(tint: self.neutralControlTint)
                     .controlSize(.small)
-                    .tint(self.neutralControlTint)
                     .disabled(self.isLoading)
 
                     if self.isLoading {
@@ -197,9 +196,8 @@ struct IPadSkillWorkshopScreen: View {
                             .font(OpenClawType.captionSemiBold)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton(tint: self.neutralControlTint)
                     .controlSize(.small)
-                    .tint(self.neutralControlTint)
                     .disabled(self.isLoading)
                 }
                 if let noticeText {
@@ -268,9 +266,8 @@ struct IPadSkillWorkshopScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .buttonStyle(.bordered)
+            .openClawGlassButton(tint: self.neutralControlTint)
             .controlSize(.small)
-            .tint(self.neutralControlTint)
             .disabled(self.agentScopeOptions.isEmpty)
             .accessibilityLabel("Skill Workshop agent scope")
         }
@@ -527,7 +524,7 @@ struct IPadSkillWorkshopScreen: View {
                 .font(OpenClawType.captionSemiBold)
                 .frame(maxWidth: self.isCompactWidth ? .infinity : nil)
         }
-        .buttonStyle(.borderedProminent)
+        .openClawGlassButton(prominent: true)
         .controlSize(.small)
         .disabled(!self.canApplyProposalMutations || self.busyAction != nil)
     }
@@ -540,7 +537,7 @@ struct IPadSkillWorkshopScreen: View {
                 .font(OpenClawType.captionSemiBold)
                 .frame(maxWidth: self.isCompactWidth ? .infinity : nil)
         }
-        .buttonStyle(.bordered)
+        .openClawGlassButton()
         .controlSize(.small)
         .disabled(!self.canApplyProposalMutations || self.busyAction != nil)
     }
@@ -553,7 +550,7 @@ struct IPadSkillWorkshopScreen: View {
                 .font(OpenClawType.captionSemiBold)
                 .frame(maxWidth: self.isCompactWidth ? .infinity : nil)
         }
-        .buttonStyle(.bordered)
+        .openClawGlassButton()
         .controlSize(.small)
         .disabled(self.inspectingProposalID != nil)
     }
@@ -1106,7 +1103,7 @@ struct IPadSkillProposalRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(
-            self.isSelected ? OpenClawBrand.danger.opacity(0.08) : Color.clear,
+            self.isSelected ? OpenClawBrand.accent.opacity(0.08) : Color.clear,
             in: RoundedRectangle(cornerRadius: OpenClawRadius.xs, style: .continuous))
     }
 }

@@ -11,7 +11,7 @@ struct SettingsIcon: View {
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: 28, height: 28)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(self.color))
+            .background(RoundedRectangle(cornerRadius: OpenClawRadius.xs, style: .continuous).fill(self.color))
     }
 }
 
@@ -142,7 +142,7 @@ extension SettingsProTab {
         Section {
             self.settingsListRow(
                 icon: "checkmark.shield.fill",
-                iconColor: self.pendingApproval == nil ? .green : .orange,
+                iconColor: self.pendingApproval == nil ? OpenClawBrand.ok : OpenClawBrand.warn,
                 title: "Approvals",
                 route: .approvals,
                 badgeValue: self.pendingApproval == nil ? nil : "1")

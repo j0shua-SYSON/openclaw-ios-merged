@@ -66,6 +66,7 @@ struct IPadWorkboardScreen: View {
                 NavigationStack {
                     self.createCardSheet
                 }
+                .openClawSheetChrome()
             case let .card(card):
                 IPadWorkboardCardDetailSheet(
                     card: card,
@@ -151,7 +152,7 @@ struct IPadWorkboardScreen: View {
                         Label("Dispatch", systemImage: "bolt.fill")
                             .font(OpenClawType.captionSemiBold)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .controlSize(.small)
                     .disabled(!self.canWrite || self.isLoading)
 
@@ -161,9 +162,8 @@ struct IPadWorkboardScreen: View {
                         Label("Refresh", systemImage: "arrow.clockwise")
                             .font(OpenClawType.captionSemiBold)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton(tint: self.neutralControlTint)
                     .controlSize(.small)
-                    .tint(self.neutralControlTint)
                     .disabled(self.isLoading)
 
                     if self.isLoading {
@@ -213,7 +213,7 @@ struct IPadWorkboardScreen: View {
                                 .font(OpenClawType.captionSemiBold)
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .openClawGlassButton()
                         .controlSize(.small)
                         .disabled(self.isLoading)
                     }
@@ -261,7 +261,7 @@ struct IPadWorkboardScreen: View {
                 .font(OpenClawType.captionSemiBold)
                 .frame(maxWidth: expands ? .infinity : nil)
         }
-        .buttonStyle(.borderedProminent)
+        .openClawGlassButton(prominent: true)
         .controlSize(.small)
         .disabled(self.isCreatingCard)
         .accessibilityHint("Opens card title and notes entry")
@@ -391,9 +391,8 @@ struct IPadWorkboardScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .buttonStyle(.bordered)
+            .openClawGlassButton(tint: self.neutralControlTint)
             .controlSize(.small)
-            .tint(self.neutralControlTint)
             .accessibilityLabel("Workboard board scope")
         }
     }
@@ -427,9 +426,8 @@ struct IPadWorkboardScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .buttonStyle(.bordered)
+            .openClawGlassButton(tint: self.neutralControlTint)
             .controlSize(.small)
-            .tint(self.neutralControlTint)
         }
     }
 
@@ -537,6 +535,7 @@ struct IPadWorkboardScreen: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("New Card")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1166,7 +1165,7 @@ struct IPadWorkboardQueueRow: View {
                 self.actionMenuItems
             } label: {
                 Image(systemName: self.isBusy ? "hourglass" : "ellipsis.circle")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(OpenClawType.headline)
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
@@ -1348,6 +1347,7 @@ private struct IPadWorkboardCardDetailSheet: View {
                         .font(OpenClawType.captionSemiBold)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1360,6 +1360,7 @@ private struct IPadWorkboardCardDetailSheet: View {
                     }
                 }
             }
+            .openClawSheetChrome()
         }
     }
 

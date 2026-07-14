@@ -82,8 +82,8 @@ struct CommandCenterTab: View {
                                 .padding(.horizontal, OpenClawProMetric.pagePadding)
                         }
                     }
-                    .padding(.top, 18)
-                    .padding(.bottom, 18)
+                    .padding(.top, OpenClawSpacing.space4)
+                    .padding(.bottom, OpenClawSpacing.space4)
                 }
                 .safeAreaPadding(.bottom, OpenClawProMetric.bottomScrollInset)
             }
@@ -186,7 +186,7 @@ struct CommandCenterTab: View {
                         value: self.gatewayAgentCountText,
                         color: OpenClawBrand.accentHotForeground)
                 }
-                .padding(.vertical, 7)
+                .padding(.vertical, OpenClawSpacing.space2)
             }
         }
         .padding(.horizontal, OpenClawProMetric.pagePadding)
@@ -194,7 +194,7 @@ struct CommandCenterTab: View {
 
     private func gatewayFact(icon: String, title: String, value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
+            HStack(spacing: OpenClawSpacing.space1) {
                 Image(systemName: icon)
                     .font(OpenClawType.caption2Bold)
                     .foregroundStyle(color)
@@ -734,8 +734,8 @@ struct CommandSessionsScreen: View {
                     }
                     self.sessionsPanel
                 }
-                .padding(.top, 16)
-                .padding(.bottom, 18)
+                .padding(.top, OpenClawSpacing.space4)
+                .padding(.bottom, OpenClawSpacing.space4)
             }
             .safeAreaPadding(.bottom, OpenClawProMetric.bottomScrollInset)
         }
@@ -828,7 +828,7 @@ struct CommandSessionsScreen: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 10)
-                .padding(.bottom, 3)
+                .padding(.bottom, OpenClawSpacing.space1)
 
                 if let loadErrorText {
                     CommandEmptyStateRow(

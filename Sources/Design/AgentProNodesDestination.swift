@@ -287,9 +287,7 @@ struct AgentProNodesDestination: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(
-            Color.primary.opacity(0.055),
-            in: RoundedRectangle(cornerRadius: OpenClawRadius.sm, style: .continuous))
+        .proInsetSurface(tint: .secondary, radius: OpenClawRadius.sm)
     }
 
     private func emptyRow(

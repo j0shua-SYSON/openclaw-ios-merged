@@ -22,7 +22,7 @@ struct OpenClawDocsScreen: View {
         ZStack {
             OpenClawProBackground()
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: OpenClawSpacing.space4) {
                     if !self.usesNativeNavigationChrome {
                         self.headerCard
                     }
@@ -56,7 +56,7 @@ struct OpenClawDocsScreen: View {
                 titleFont: OpenClawType.headline,
                 subtitleFont: OpenClawType.caption)
             {
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: OpenClawSpacing.space3) {
                     if let headerLeadingAction {
                         OpenClawSidebarHeaderLeadingSlot(action: headerLeadingAction)
                     }
@@ -110,7 +110,7 @@ struct OpenClawDocsScreen: View {
 
     private func docsLinkRow(title: String, detail: String, icon: String, url: URL) -> some View {
         Link(destination: url) {
-            HStack(spacing: 12) {
+            HStack(spacing: OpenClawSpacing.space3) {
                 ProIconBadge(systemName: icon, color: OpenClawBrand.accent)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)

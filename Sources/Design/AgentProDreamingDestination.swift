@@ -303,7 +303,7 @@ struct AgentProDreamingDestination: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 10)
             .frame(height: 34)
-            .background(Color.primary.opacity(0.055), in: Capsule())
+            .openClawGlassCapsule()
         }
         .accessibilityLabel("Dream diary day")
     }
@@ -330,9 +330,7 @@ struct AgentProDreamingDestination: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
-        .background(
-            Color.primary.opacity(0.045),
-            in: RoundedRectangle(cornerRadius: OpenClawRadius.sm, style: .continuous))
+        .proInsetSurface(tint: .secondary, radius: OpenClawRadius.sm)
     }
 
     private func selectedDreamDiaryDay(from days: [DreamDiaryDay]) -> DreamDiaryDay? {
@@ -498,9 +496,7 @@ struct AgentProDreamingDestination: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(
-            Color.primary.opacity(0.055),
-            in: RoundedRectangle(cornerRadius: OpenClawRadius.sm, style: .continuous))
+        .proInsetSurface(tint: .secondary, radius: OpenClawRadius.sm)
     }
 
     private func dreamingEntryTitle(_ entry: DreamingEntryLite) -> String {

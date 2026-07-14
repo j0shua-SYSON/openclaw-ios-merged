@@ -670,10 +670,9 @@ extension OnboardingWizardView {
                             .font(OpenClawType.subheadSemiBold)
                     }
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton(tint: OpenClawBrand.activationPrimaryAction)
                 .buttonBorderShape(.capsule)
                 .controlSize(.regular)
-                .tint(OpenClawBrand.activationPrimaryAction)
                 .disabled(!self.canApplySetupCode)
             }
             .frame(minHeight: 50)

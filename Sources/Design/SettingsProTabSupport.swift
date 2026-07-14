@@ -240,7 +240,7 @@ struct SettingsApprovalRow: View {
                 .foregroundStyle(.white)
                 .frame(width: 30, height: 30)
                 .background {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: OpenClawRadius.xs, style: .continuous)
                         .fill(self.item.color)
                 }
             VStack(alignment: .leading, spacing: 2) {
@@ -596,7 +596,7 @@ private struct SettingsGatewayStatesPreview: View {
                 .frame(maxWidth: .infinity)
         }
         .font(OpenClawType.captionSemiBold)
-        .buttonStyle(.bordered)
+        .openClawGlassButton()
         .controlSize(.small)
         .disabled(isBusy)
     }

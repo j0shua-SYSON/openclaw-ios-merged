@@ -452,8 +452,8 @@ struct HostedPushRelayDisclosureSheet: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .tint(OpenClawBrand.accent)
-        .padding(24)
+        .padding(OpenClawSpacing.space6)
+        .openClawSheetChrome()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

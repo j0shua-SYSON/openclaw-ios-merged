@@ -267,7 +267,7 @@ private struct GatewayQuickSetupCandidatePanel: View {
                     .foregroundStyle(OpenClawBrand.activationPrimaryActionText)
                     .frame(width: 36, height: 36)
                     .background {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: OpenClawRadius.md, style: .continuous)
                             .fill(OpenClawBrand.activationPrimaryGradient)
                     }
                     .shadow(color: OpenClawBrand.activationGlow.opacity(0.18), radius: 6, x: 0, y: 3)

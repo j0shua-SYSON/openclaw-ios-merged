@@ -183,7 +183,7 @@ private struct ExecApprovalPromptCard: View {
                             .font(OpenClawType.subheadSemiBold)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .openClawGlassButton(prominent: true)
                     .disabled(self.isResolving)
                 }
 
@@ -195,7 +195,7 @@ private struct ExecApprovalPromptCard: View {
                             .font(OpenClawType.subheadSemiBold)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .openClawGlassButton()
                     .disabled(self.isResolving)
                 }
 
@@ -222,7 +222,7 @@ private struct ExecApprovalPromptCard: View {
                         .font(OpenClawType.subheadSemiBold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
             }
         }
         .controlSize(.large)
@@ -237,7 +237,7 @@ private struct ExecApprovalPromptCard: View {
                 .font(OpenClawType.subheadSemiBold)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
+        .openClawGlassButton()
         .disabled(self.isResolving)
     }
 
@@ -249,7 +249,7 @@ private struct ExecApprovalPromptCard: View {
                 .font(OpenClawType.subheadSemiBold)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
+        .openClawGlassButton()
         .disabled(!self.canDismiss)
     }
 

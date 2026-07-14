@@ -56,7 +56,7 @@ struct TerminalHubScreen: View {
     }
 
     private var unavailableCard: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: OpenClawSpacing.space3) {
             ProIconBadge(systemName: "terminal", color: OpenClawBrand.accent)
             Text("Terminal needs a connected gateway")
                 .font(OpenClawType.subheadSemiBold)
@@ -72,7 +72,7 @@ struct TerminalHubScreen: View {
                 .openClawGlassButton(prominent: true, tint: OpenClawBrand.accent)
             }
         }
-        .padding(24)
+        .padding(OpenClawSpacing.space6)
     }
 
     /// Derives the terminal page URL from the active gateway connection: the

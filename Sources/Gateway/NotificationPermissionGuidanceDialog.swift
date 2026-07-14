@@ -77,7 +77,7 @@ private struct NotificationPermissionGuidanceCard: View {
                         .font(OpenClawType.subheadSemiBold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .openClawGlassButton(prominent: true)
 
                 Button(role: .cancel) {
                     self.onDismiss()
@@ -86,7 +86,7 @@ private struct NotificationPermissionGuidanceCard: View {
                         .font(OpenClawType.subheadSemiBold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
 
                 Button {
                     self.onSuppressFuture()
@@ -95,7 +95,7 @@ private struct NotificationPermissionGuidanceCard: View {
                         .font(OpenClawType.subheadSemiBold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .openClawGlassButton()
             }
             .controlSize(.large)
             .frame(maxWidth: .infinity)
