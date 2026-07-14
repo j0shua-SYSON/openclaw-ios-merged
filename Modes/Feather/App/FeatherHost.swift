@@ -24,6 +24,17 @@
 import UIKit
 import SwiftUI
 
+extension Bundle
+{
+    /// The Feather.framework bundle. Feather ships its resources (asset-catalog
+    /// icons, bundled signing-assets, tweak resources) inside the framework, but
+    /// loads them via Bundle.main — which is Feather.app normally but OpenClaw.app
+    /// when embedded. apply_fork.sh rewrites those lookups to use this instead.
+    /// (Feather has no force-unwrapped asset lookups, so this is correctness, not a
+    /// crash fix — unlike Delta's deltaPurple.)
+    static var featherResources: Bundle { Bundle(for: FeatherHost.self) }
+}
+
 @objc(FeatherHost)
 public final class FeatherHost: NSObject
 {

@@ -18,3 +18,11 @@
 @interface DeltaLauncher : NSObject
 + (UIViewController * _Nonnull)makeRootViewController;
 @end
+
+// Feather mode — same pattern: forward-declared (not imported from <Feather/…>) so
+// OpenClaw's Swift never loads Feather's Swift module + its static transitive
+// dependencies (Vapor, SwiftNIO, Zsign, OpenSSL, …). Resolved from the embedded
+// Feather.framework at link time. See Modes/Feather/fork/FeatherLauncher.h.
+@interface FeatherLauncher : NSObject
++ (UIViewController * _Nonnull)makeRootViewController;
+@end

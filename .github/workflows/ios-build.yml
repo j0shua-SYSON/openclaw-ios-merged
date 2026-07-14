@@ -25,6 +25,8 @@ permissions:
 env:
   DELTA_REPO: https://github.com/rileytestut/Delta.git
   DELTA_SHA: adee3c5c13a5fd944d0389cdbdd526cdcff2e6e6
+  FEATHER_REPO: https://github.com/claration/Feather.git
+  FEATHER_SHA: 82a0087b28da3db5665c0a1e255acfe0151c4caa
 
 jobs:
   build:
@@ -114,6 +116,67 @@ jobs:
           path: Vendor/DeltaPrebuilt
           key: delta-fw-v1-${{ env.DELTA_SHA }}-${{ hashFiles('Modes/Delta/fork/**', 'Modes/Delta/App/**') }}
 
+      # --- Feather mode: build the forked Feather.framework + OpenSSL ------------
+      # Feather's SwiftUI app layer is forked into Feather.framework (Stage A,
+      # validated by feathermode-build.yml). Pods/SPM are static and bake in; only
+      # Feather.framework + OpenSSL.framework (from Zsign) ship dynamic. Cached on
+      # the Feather SHA + fork scripts.
+      - name: Restore Feather frameworks cache
+        id: feather-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Vendor/FeatherPrebuilt
+          key: feather-fw-v1-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
+
+      - name: Build Feather frameworks
+        if: steps.feather-cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git lfs install
+          git clone "$FEATHER_REPO" feather
+          cd feather
+          git checkout "$FEATHER_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4
+          git lfs pull || true
+          git submodule foreach --recursive 'git lfs pull || true'
+          cd ..
+          sudo gem install xcodeproj --no-document
+          chmod +x Modes/Feather/fork/apply_fork.sh
+          bash Modes/Feather/fork/apply_fork.sh "$PWD/feather" "$PWD/Modes/Feather/fork"
+          cd feather
+          set -o pipefail
+          xcodebuild build \
+            -project Feather.xcodeproj \
+            -scheme Feather \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          cd ..
+          PRODUCTS="feather/build/Build/Products/Debug-iphoneos"
+          mkdir -p Vendor/FeatherPrebuilt
+          for fw in Feather OpenSSL; do
+            if [ -d "$PRODUCTS/$fw.framework" ]; then
+              cp -R "$PRODUCTS/$fw.framework" Vendor/FeatherPrebuilt/
+            else
+              echo "::error::Feather framework missing: $fw.framework"; exit 1
+            fi
+          done
+          rm -rf feather
+          echo "--- Vendor/FeatherPrebuilt ---"; ls Vendor/FeatherPrebuilt
+
+      - name: Save Feather frameworks cache
+        if: steps.feather-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Vendor/FeatherPrebuilt
+          key: feather-fw-v1-${{ env.FEATHER_SHA }}-${{ hashFiles('Modes/Feather/fork/**', 'Modes/Feather/App/**') }}
+
       - name: Generate build/Version.xcconfig
         run: |
           set -e
@@ -167,6 +230,12 @@ jobs:
           if [ -f "$DF" ]; then
             echo "::group::Delta.framework @rpath deps (cores must be embedded)"
             otool -L "$DF" | grep -E "@rpath" || echo "(none)"
+            echo "::endgroup::"
+          fi
+          FF="$APP/Frameworks/Feather.framework/Feather"
+          if [ -f "$FF" ]; then
+            echo "::group::Feather.framework @rpath deps (OpenSSL must be embedded)"
+            otool -L "$FF" | grep -E "@rpath" || echo "(none)"
             echo "::endgroup::"
           fi
           rm -rf build/Payload && mkdir -p build/Payload

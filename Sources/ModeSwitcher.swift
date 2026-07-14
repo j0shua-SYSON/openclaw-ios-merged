@@ -255,6 +255,17 @@ struct DeltaModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts Feather's real SwiftUI UI (Sources/Library/Settings/Certificates tabs)
+/// via a UIHostingController. `Feather.framework` is the forked Feather app layer;
+/// see Modes/Feather/fork.
+struct FeatherModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        FeatherLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -268,6 +279,10 @@ struct ModeContainerView: View {
         case "delta":
             // Real Delta. Same 5-tap/3-finger gesture returns to OpenClaw.
             DeltaModeView()
+                .ignoresSafeArea()
+        case "feather":
+            // Real Feather (on-device signing). Same gesture returns to OpenClaw.
+            FeatherModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody

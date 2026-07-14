@@ -131,6 +131,16 @@ targets:
       - framework: Vendor/DeltaPrebuilt/ZIPFoundation.framework
         embed: true
         link: false
+      # Feather mode — prebuilt dynamic frameworks (see Modes/Feather/fork). Feather's
+      # pods/SPM (Vapor, SwiftNIO, Zsign, Nuke, …) are static and bake into
+      # Feather.framework; only these two ship dynamic. Feather.framework is linked
+      # (OpenClaw's bridging header forward-declares FeatherLauncher, resolved from it
+      # at link time); OpenSSL is runtime-only (Zsign's libcrypto), embedded.
+      - framework: Vendor/FeatherPrebuilt/Feather.framework
+        embed: true
+      - framework: Vendor/FeatherPrebuilt/OpenSSL.framework
+        embed: true
+        link: false
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI

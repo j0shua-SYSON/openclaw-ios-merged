@@ -46,6 +46,21 @@ perl -0pi -e 's/(container = NSPersistentContainer\(name: _name\)\n)/$1\n\t\tif 
   "$APP/Backend/Storage/Storage.swift"
 echo "   redirected Core Data store -> Documents/Feather/Feather.sqlite"
 
+# 4b. Redirect Feather's own-bundle asset/resource lookups from Bundle.main (which
+#     is OpenClaw.app when embedded) to the Feather.framework bundle. Feather has no
+#     force-unwrapped lookups (so no launch crash, unlike Delta), but SwiftUI
+#     Image("...") asset icons + Bundle.main.url(forResource:) (signing-assets, tweak
+#     resource) would silently resolve to the host and come up empty. Bundle
+#     .featherResources (defined in FeatherHost.swift) points at the framework bundle.
+find "$APP" -name "*.swift" -type f -exec perl -0pi -e \
+  's/Bundle\.main\.url\(forResource/Bundle.featherResources.url(forResource/g;
+   s/Bundle\.main\.path\(forResource/Bundle.featherResources.path(forResource/g;
+   s/(?<![A-Za-z])Image\(\s*"([^"]+)"\s*\)/Image("$1", bundle: Bundle.featherResources)/g;
+   s/(?<![A-Za-z])Color\(\s*"([^"]+)"\s*\)/Color("$1", bundle: Bundle.featherResources)/g;
+   s/UIImage\(named:\s*"([^"]+)"\)/UIImage(named: "$1", in: Bundle.featherResources, compatibleWith: nil)/g;
+   s/UIColor\(named:\s*"([^"]+)"\)/UIColor(named: "$1", in: Bundle.featherResources, compatibleWith: nil)/g' {} +
+echo "   redirected Bundle.main + asset-catalog lookups -> Bundle.featherResources"
+
 # 5. Convert the app target into Feather.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Feather.xcodeproj"
 

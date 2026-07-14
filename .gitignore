@@ -38,7 +38,12 @@ LocalSigning.xcconfig
 # --- Subagent / scratch ---
 .tmp/
 
-# --- Delta mode prebuilt frameworks (built fresh in CI from the Delta fork) ---
+# --- Mode prebuilt frameworks (built fresh in CI from the mode forks) ---
 /Vendor/DeltaPrebuilt/
-# transient Delta clone (CI only)
+/Vendor/FeatherPrebuilt/
+# transient mode clones (CI only)
 /delta/
+/feather/
+
+# --- Isolated git worktree for the concurrent UI-polish session ---
+/.worktrees/
