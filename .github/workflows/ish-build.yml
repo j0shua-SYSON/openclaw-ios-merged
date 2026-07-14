@@ -1,8 +1,8 @@
-name: iSH build (validate toolchain)
+name: iSH build (framework)
 
-# Milestone 1a for the iSH mode embed: prove our CI can do iSH's meson+ninja
-# emulator build at all, on an UNMODIFIED iSH clone, before investing in the
-# app-target -> framework conversion. Manual only; never runs on push.
+# Milestone 1b for the iSH mode embed: apply the fork (iSH app target -> iSH.framework,
+# drop the FileProvider extension, neutralize main) and build iSH.framework on our
+# runner. Manual, or on push to the ish-mode branch; never runs on main.
 
 on:
   workflow_dispatch:
@@ -14,10 +14,15 @@ env:
   ISH_SHA: 997642f3787cc63e65f7134b7bb0362c74bff8e0
 
 jobs:
-  validate:
+  build:
     runs-on: macos-15
     timeout-minutes: 90
     steps:
+      - name: Checkout OpenClaw (for the fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
       - name: Clone iSH + submodules
         run: |
           set -e
@@ -31,7 +36,14 @@ jobs:
       - name: Install build deps (mirrors iSH CI)
         run: brew install llvm lld ninja libarchive meson
 
-      - name: Build iSH (unmodified, arm64 device)
+      - name: Apply OpenClaw iSH fork
+        run: |
+          set -e
+          sudo gem install xcodeproj --no-document
+          chmod +x openclaw/Modes/iSH/fork/apply_fork.sh
+          bash openclaw/Modes/iSH/fork/apply_fork.sh "$PWD/ish" "$PWD/openclaw/Modes/iSH/fork"
+
+      - name: Build iSH.framework (arm64 device)
         run: |
           cd ish
           set -o pipefail
@@ -42,13 +54,28 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             | tee build.log \
-            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|meson|ninja|Compile JavaScript|Download Root" || true
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|meson|ninja|iSH.framework|Compile JavaScript|Download Root" || true
 
       - name: Diagnostics (always)
         if: always()
         run: |
           cd ish
-          echo "=== last 100 lines of build.log ==="
-          tail -100 build.log 2>/dev/null || echo "(no build.log)"
-          echo "=== build products ==="
-          find build/Build/Products -maxdepth 3 \( -name "*.app" -o -name "*.framework" -o -name "*.a" \) 2>/dev/null | head -60 || true
+          echo "=== last 120 lines of build.log ==="
+          tail -120 build.log 2>/dev/null || echo "(no build.log)"
+          echo "=== iSH.framework in products? ==="
+          find build/Build/Products -maxdepth 3 -name "iSH.framework" 2>/dev/null || true
+          FW=$(find build/Build/Products -maxdepth 3 -name "iSH.framework" 2>/dev/null | head -1)
+          if [ -n "$FW" ]; then
+            echo "=== framework contents ==="
+            ls -la "$FW" | head -40
+            echo "=== binary type ==="
+            file "$FW/iSH" 2>/dev/null || true
+          fi
+
+      - name: Upload iSH.framework artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iSH-framework
+          path: ish/build/Build/Products/**/iSH.framework
+          if-no-files-found: ignore
