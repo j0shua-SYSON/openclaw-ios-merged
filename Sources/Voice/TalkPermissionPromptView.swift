@@ -96,16 +96,13 @@ struct TalkPermissionPromptView: View {
             }
         }
         .padding(self.style == .card || self.style == .sheet ? 16 : 0)
+        // Was a hand-rolled .thinMaterial + accent border (inconsistent with the
+        // app's sanctioned glass surfaces, which use .regular material and no border).
+        // Match the sanctioned recipe so it doesn't read as a second design language.
         .background {
             if self.style == .card || self.style == .sheet {
                 RoundedRectangle(cornerRadius: OpenClawRadius.md, style: .continuous)
-                    .fill(.thinMaterial)
-            }
-        }
-        .overlay {
-            if self.style == .card || self.style == .sheet {
-                RoundedRectangle(cornerRadius: OpenClawRadius.md, style: .continuous)
-                    .stroke(OpenClawBrand.accent.opacity(0.20), lineWidth: 1)
+                    .fill(.regularMaterial)
             }
         }
         .task(id: self.pollTaskKey) {
