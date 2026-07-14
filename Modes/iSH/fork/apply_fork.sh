@@ -66,6 +66,16 @@ grep -q 'URLByAppendingPathComponent:@"iSH" isDirectory:YES' "$APP/AppGroup.m" \
   || { echo "ERROR: ContainerURL() isolation patch did not apply"; exit 1; }
 echo "   isolated iSH storage to Documents/iSH via ContainerURL()"
 
+# 2e. Auto-start the shell session. Standalone iSH starts the interactive session from
+#     SceneDelegate -scene:willConnectToSession: ([vc startNewSession]). Embedded, we
+#     present TerminalViewController directly with no scene, so the session never starts
+#     and the terminal stays blank. Start one when the terminal first appears.
+perl -0pi -e 's/(\[super viewDidAppear:animated\];)(\r?\n)(\})/$1$2    \/\/ Embedded: no SceneDelegate to start the shell session (standalone iSH does it$2    \/\/ in scene:willConnectToSession:), so start one on first appear.$2    if (self.sessionTerminal == nil)$2        [self startNewSession];$2$3/' \
+  "$APP/TerminalViewController.m"
+grep -q 'so start one on first appear' "$APP/TerminalViewController.m" \
+  && echo "   auto-start shell session in TerminalViewController.viewDidAppear" \
+  || { echo "ERROR: viewDidAppear session auto-start patch did not apply"; exit 1; }
+
 # 3. Convert the iSH app target -> iSH.framework (drops FileProvider, adds launcher).
 ruby "$FORK/convert_to_framework.rb" "$CLONE/iSH.xcodeproj"
 
