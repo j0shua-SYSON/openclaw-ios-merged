@@ -62,14 +62,24 @@ jobs:
           cd ish
           echo "=== last 120 lines of build.log ==="
           tail -120 build.log 2>/dev/null || echo "(no build.log)"
-          echo "=== iSH.framework in products? ==="
-          find build/Build/Products -maxdepth 3 -name "iSH.framework" 2>/dev/null || true
-          FW=$(find build/Build/Products -maxdepth 3 -name "iSH.framework" 2>/dev/null | head -1)
+          # The real product framework (not the EagerLinkingTBDs stub, which is Headers-only).
+          FW=$(find build/Build/Products -type d -name "iSH.framework" 2>/dev/null | grep -iv "EagerLinking" | head -1)
+          echo "REAL FRAMEWORK: $FW"
           if [ -n "$FW" ]; then
-            echo "=== framework contents ==="
-            ls -la "$FW" | head -40
-            echo "=== binary type ==="
-            file "$FW/iSH" 2>/dev/null || true
+            echo "=== ls -laR (first 100) ==="
+            ls -laR "$FW" | head -100
+            echo "=== binary ==="
+            file "$FW/iSH" 2>/dev/null || echo "(no iSH binary!)"
+            echo "=== key resources present? ==="
+            for r in Terminal.storyboardc About.storyboardc Roots.storyboardc Assets.car term.html hterm_all.js; do
+              found=$(find "$FW" -name "$r" 2>/dev/null | head -1)
+              echo "  $r -> ${found:-MISSING}"
+            done
+            echo "=== any tar/rootfs? ==="
+            find "$FW" \( -name "*.tar*" -o -name "*.zip" -o -iname "*alpine*" \) 2>/dev/null | head
+            mkdir -p ../out
+            tar czf ../out/iSH.framework.tgz -C "$(dirname "$FW")" iSH.framework
+            echo "tarred -> out/iSH.framework.tgz ($(du -h ../out/iSH.framework.tgz | cut -f1))"
           fi
 
       - name: Upload iSH.framework artifact
@@ -77,5 +87,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: iSH-framework
-          path: ish/build/Build/Products/**/iSH.framework
-          if-no-files-found: ignore
+          path: out/iSH.framework.tgz
+          if-no-files-found: warn
