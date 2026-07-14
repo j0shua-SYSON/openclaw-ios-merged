@@ -198,7 +198,8 @@ jobs:
         if: steps.ish-cache.outputs.cache-hit != 'true'
         run: |
           set -e
-          brew install meson ninja libarchive
+          # iSH's meson build links with -fuse-ld=lld, so llvm+lld are required.
+          brew install llvm lld ninja libarchive meson
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git clone "$ISH_REPO" ish
           cd ish
