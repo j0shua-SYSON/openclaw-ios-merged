@@ -5,12 +5,18 @@ private struct NotificationPermissionGuidanceDialogModifier: ViewModifier {
     let openNotifications: (String) -> Void
 
     func body(content: Content) -> some View {
-        content
+        let prompt = self.appModel.pendingNotificationPermissionGuidancePrompt
+        return content
+            // Modal a11y: block the backdrop from hits + VoiceOver so it can't be
+            // reached while the dialog is up (matches ExecApprovalPromptDialog).
+            .allowsHitTesting(prompt == nil)
+            .accessibilityHidden(prompt != nil)
             .overlay {
-                if let prompt = self.appModel.pendingNotificationPermissionGuidancePrompt {
+                if let prompt {
                     ZStack {
                         Color.black.opacity(0.38)
                             .ignoresSafeArea()
+                            .accessibilityHidden(true)
 
                         NotificationPermissionGuidanceCard(
                             onOpenNotifications: {
@@ -30,6 +36,7 @@ private struct NotificationPermissionGuidanceDialogModifier: ViewModifier {
                             .padding(.horizontal, 20)
                             .frame(maxWidth: 460)
                             .transition(.scale(scale: 0.98).combined(with: .opacity))
+                            .accessibilityAddTraits(.isModal)
                     }
                     .zIndex(2)
                     .id(prompt.id)

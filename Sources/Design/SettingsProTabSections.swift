@@ -786,7 +786,9 @@ extension SettingsProTab {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(color)
+        // Explicit color would override SwiftUI's disabled dimming, so a disabled row
+        // still looks full-accent/tappable — dim it ourselves when inactive.
+        .foregroundStyle((isBusy || isDisabled) ? color.opacity(0.38) : color)
         .disabled(isBusy || isDisabled)
         .accessibilityLabel(Text(title))
     }

@@ -16,18 +16,25 @@ struct SettingsChannelsDestination: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if self.showsSummaryCard {
-                self.summaryCard
+        ZStack {
+            OpenClawProBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    if self.showsSummaryCard {
+                        self.summaryCard
+                    }
+                    self.channelsCard
+                }
+                .padding(.top, 4)
             }
-            self.channelsCard
+            .safeAreaPadding(.bottom, OpenClawProMetric.bottomScrollInset)
+            .refreshable {
+                await self.loadChannels(force: true)
+            }
         }
         .font(OpenClawType.body)
         .task(id: self.refreshID) {
             await self.loadChannels(force: false)
-        }
-        .refreshable {
-            await self.loadChannels(force: true)
         }
     }
 

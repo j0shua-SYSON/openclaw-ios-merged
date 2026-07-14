@@ -33,6 +33,9 @@ struct VoiceWakeWordsSettingsView: View {
 
                 Button {
                     self.triggerWords = VoiceWakePreferences.defaultTriggerWords
+                    // Persist the reset, else the UserDefaults.didChange listener below
+                    // reloads the old words and the reset visibly reverts.
+                    self.commitTriggerWords()
                 } label: {
                     Text("Reset defaults")
                         .font(OpenClawType.subheadSemiBold)
