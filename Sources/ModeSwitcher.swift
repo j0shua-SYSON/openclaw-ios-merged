@@ -274,6 +274,18 @@ struct FeatherModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts iSH's real terminal (TerminalViewController from Terminal.storyboard) inside
+/// the SwiftUI mode overlay. iSHLauncher boots the emulated Linux kernel (mount the
+/// Alpine rootfs, spawn init) before returning the VC. `iSH.framework` is the forked
+/// iSH app layer; see Modes/iSH/fork.
+struct ISHModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        iSHLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -291,6 +303,10 @@ struct ModeContainerView: View {
         case "feather":
             // Real Feather (on-device signing). Same gesture returns to OpenClaw.
             FeatherModeView()
+                .ignoresSafeArea()
+        case "ish":
+            // Real iSH (x86 Linux shell). Same gesture returns to OpenClaw.
+            ISHModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody

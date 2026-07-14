@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ish-mode]
+    paths:
+      - "Modes/iSH/fork/**"
+      - ".github/workflows/ish-build.yml"
 
 env:
   ISH_REPO: https://github.com/ish-app/ish.git
