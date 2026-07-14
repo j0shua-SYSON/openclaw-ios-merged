@@ -42,6 +42,30 @@ grep -q "_dyld_get_image_header(0)" "$APP/AppGroup.m" \
   || { echo "ERROR: AppGroup.m _mh_execute_header patch did not apply"; exit 1; }
 echo "   patched AppGroup.m to read the host image header via dyld (framework-safe)"
 
+# 2c. Redirect iSH's Bundle.main resource + storyboard lookups to the framework bundle.
+#     Embedded, Bundle.main is OpenClaw, which has none of iSH's resources. iSHLauncher
+#     lives in iSH.framework, so bundleForClass:iSHLauncher resolves to the framework
+#     bundle. Covers root.tar.gz (rootfs), term.html (terminal), repositories.txt (apk
+#     repos), alt icons, and the About storyboard.
+perl -0pi -e 's/\[NSBundle\.mainBundle URLForResource:/[[NSBundle bundleForClass:NSClassFromString(\@"iSHLauncher")] URLForResource:/g' \
+  "$APP/Roots.m" "$APP/Terminal.m" "$APP/CurrentRoot.m" "$APP/AltIconViewController.m"
+perl -0pi -e 's/storyboardWithName:\@"About" bundle:nil/storyboardWithName:\@"About" bundle:[NSBundle bundleForClass:NSClassFromString(\@"iSHLauncher")]/g' \
+  "$APP/AppDelegate.m" "$APP/SceneDelegate.m" "$APP/TerminalViewController.m"
+grep -q 'bundleForClass:NSClassFromString(@"iSHLauncher")] URLForResource:@"root"' "$APP/Roots.m" \
+  || { echo "ERROR: Roots.m rootfs bundle redirect did not apply"; exit 1; }
+grep -q 'bundleForClass:NSClassFromString(@"iSHLauncher")] URLForResource:@"term"' "$APP/Terminal.m" \
+  || { echo "ERROR: Terminal.m term.html bundle redirect did not apply"; exit 1; }
+echo "   redirected Bundle.main resource + About-storyboard lookups -> framework bundle"
+
+# 2d. Isolate iSH's storage. ContainerURL() returns the app-group container (nil for
+#     OpenClaw, which has no iSH app-group). Point it at Documents/iSH so the rootfs and
+#     all iSH state live in an iSH-only subdir of OpenClaw's container.
+perl -0pi -e 's/NSURL \*ContainerURL\(void\) \{.*?\n\}/NSURL *ContainerURL(void) {\n    NSURL *docs = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;\n    NSURL *base = [docs URLByAppendingPathComponent:\@"iSH" isDirectory:YES];\n    [NSFileManager.defaultManager createDirectoryAtURL:base withIntermediateDirectories:YES attributes:nil error:nil];\n    return base;\n}/s' \
+  "$APP/AppGroup.m"
+grep -q 'URLByAppendingPathComponent:@"iSH" isDirectory:YES' "$APP/AppGroup.m" \
+  || { echo "ERROR: ContainerURL() isolation patch did not apply"; exit 1; }
+echo "   isolated iSH storage to Documents/iSH via ContainerURL()"
+
 # 3. Convert the iSH app target -> iSH.framework (drops FileProvider, adds launcher).
 ruby "$FORK/convert_to_framework.rb" "$CLONE/iSH.xcodeproj"
 
