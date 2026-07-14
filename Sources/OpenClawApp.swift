@@ -744,7 +744,10 @@ struct OpenClawApp: App {
                         self.applyWindowTint()
                     }
 
-                // Hidden mode switcher: 5 taps with 3 fingers toggles the panel.
+                // Hidden mode switcher. Opened two ways: the "App Switcher" reveal in
+                // Settings ▸ About (5 taps on the "OpenClaw" title — the easy path from
+                // the host), and the 5-tap/3-finger gesture (the only way to reach it
+                // from *inside* a mode, where Settings isn't available).
                 if let mode = self.modeManager.activeMode {
                     ModeContainerView(mode: mode) {
                         self.modeManager.activate(nil)
@@ -764,6 +767,9 @@ struct OpenClawApp: App {
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
                 .zIndex(3)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openClawShowModeSwitcher)) { _ in
+                withAnimation(.spring(duration: 0.3)) { self.modeManager.panelVisible = true }
             }
         }
     }

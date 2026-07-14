@@ -5,6 +5,14 @@ import UIKit
 // Delta is reached via the ObjC `DeltaLauncher` (OpenClaw's bridging header), not
 // `import Delta` — that would require Delta's static transitive Swift modules.
 
+extension Notification.Name {
+    /// Posted by the hidden "App Switcher" reveal in OpenClaw's About settings
+    /// (5 taps on the "OpenClaw" title). OpenClawApp observes it and shows the
+    /// switcher panel. Decouples the deep Settings view from the app-level
+    /// ModeManager (which is not in the environment).
+    static let openClawShowModeSwitcher = Notification.Name("OpenClawShowModeSwitcher")
+}
+
 // MARK: - Mode model
 
 /// A switchable "mode" reachable from the hidden switcher panel. In this phase

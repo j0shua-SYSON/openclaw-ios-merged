@@ -793,26 +793,9 @@ extension SettingsProTab {
 
     var aboutDestination: some View {
         Group {
-            Section {
-                VStack(spacing: 12) {
-                    OpenClawProMark(size: 96, shadowRadius: 18, interactive: true)
-                        .accessibilityHidden(true)
-                    VStack(spacing: 2) {
-                        Text("OpenClaw")
-                            .font(OpenClawType.title2SemiBold)
-                        Text("Personal AI on your devices")
-                            .font(OpenClawType.footnote)
-                            .foregroundStyle(.secondary)
-                        SettingsBuildMetadataStrip(metadata: DeviceInfoHelper.buildMetadata())
-                            .padding(.top, 8)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-                .accessibilityElement(children: .contain)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
+            // Mascot + "OpenClaw" title; 5 taps on the title reveals the hidden
+            // mode-switcher entry (see OpenClawAboutHeaderSection).
+            OpenClawAboutHeaderSection()
 
             // Concise public details only; deep hardware identifiers live in Diagnostics.
             detailListCard {
@@ -1406,6 +1389,86 @@ extension SettingsProTab {
             : String(localized: "Off"))
         .onChange(of: isOn.wrappedValue) { _, enabled in
             onChange?(enabled)
+        }
+    }
+}
+
+/// About-screen header (mascot + "OpenClaw" title) with the hidden mode-switcher
+/// reveal. Tapping the "OpenClaw" title 5 times surfaces an "App Switcher" row for
+/// 5 seconds; tapping that posts `.openClawShowModeSwitcher`, which OpenClawApp
+/// observes to show the switcher panel. This is the easy host-side entry point that
+/// replaces the hard-to-perform 5-tap/3-finger window gesture.
+private struct OpenClawAboutHeaderSection: View {
+    @State private var tapCount = 0
+    @State private var switcherRevealed = false
+    @State private var hideTask: Task<Void, Never>?
+    @State private var resetTask: Task<Void, Never>?
+
+    var body: some View {
+        Group {
+            Section {
+                VStack(spacing: 12) {
+                    OpenClawProMark(size: 96, shadowRadius: 18, interactive: true)
+                        .accessibilityHidden(true)
+                    VStack(spacing: 2) {
+                        Text("OpenClaw")
+                            .font(OpenClawType.title2SemiBold)
+                            .contentShape(Rectangle())
+                            .onTapGesture { self.registerTitleTap() }
+                        Text("Personal AI on your devices")
+                            .font(OpenClawType.footnote)
+                            .foregroundStyle(.secondary)
+                        SettingsBuildMetadataStrip(metadata: DeviceInfoHelper.buildMetadata())
+                            .padding(.top, 8)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
+                .accessibilityElement(children: .contain)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+
+            if self.switcherRevealed {
+                Section {
+                    Button {
+                        self.hideTask?.cancel()
+                        withAnimation { self.switcherRevealed = false }
+                        NotificationCenter.default.post(name: .openClawShowModeSwitcher, object: nil)
+                    } label: {
+                        Label("App Switcher", systemImage: "square.on.square.dashed")
+                    }
+                } footer: {
+                    Text("Switch OpenClaw to another embedded app.")
+                        .font(OpenClawType.footnote)
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+
+    private func registerTitleTap() {
+        self.tapCount += 1
+
+        // Forget the streak if taps are too slow apart, so it stays a deliberate gesture.
+        self.resetTask?.cancel()
+        self.resetTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            self.tapCount = 0
+        }
+
+        guard self.tapCount >= 5 else { return }
+        self.tapCount = 0
+        self.resetTask?.cancel()
+        withAnimation { self.switcherRevealed = true }
+
+        // Auto-hide the option after 5 seconds if unused.
+        self.hideTask?.cancel()
+        self.hideTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            withAnimation { self.switcherRevealed = false }
         }
     }
 }
