@@ -15,7 +15,7 @@ echo "== apply_fork(UTM): clone=$CLONE fork=$FORK =="
 
 # 1. Drop in the launcher, the umbrella (replacing the bridging header), the framework plist.
 cp "$FORK/UTMLauncher.swift"  "$CLONE/Platform/iOS/UTMLauncher.swift"
-cp "$FORK/UTM-umbrella.h"     "$CLONE/UTM/UTM.h"
+cp "$FORK/UTM-umbrella.h"     "$CLONE/UTM.h"
 cp "$FORK/UTMMode-Info.plist" "$CLONE/UTMMode-Info.plist"
 echo "   copied UTMLauncher.swift, UTM/UTM.h (umbrella), UTMMode-Info.plist"
 

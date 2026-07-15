@@ -77,7 +77,7 @@ end
 
 # Umbrella (apply_fork.sh copied it to UTM/UTM.h).
 umbrella = project.files.find { |f| f.path && File.basename(f.path) == 'UTM.h' }
-umbrella ||= project.main_group.new_reference('UTM/UTM.h')
+umbrella ||= project.main_group.new_reference('UTM.h')
 ub = headers_phase.files.find { |b| b.file_ref == umbrella } || headers_phase.add_file_reference(umbrella)
 ub.settings = { 'ATTRIBUTES' => ['Public'] }
 puts '  public header: UTM.h (umbrella)'
