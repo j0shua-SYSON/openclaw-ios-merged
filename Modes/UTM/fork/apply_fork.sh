@@ -27,6 +27,14 @@ grep -q "// @main (removed for UTM.framework)" "$CLONE/Platform/Main.swift" \
   || { echo "ERROR: @main neutralization did not apply"; exit 1; }
 echo "   neutralized @main in Platform/Main.swift"
 
+# 2b. Fix the Swift-generated header import. UTM's ObjC uses the app-style quoted
+#     `#import "UTM-Swift.h"`; in a framework the generated header is part of the module and
+#     must be imported framework-style `<UTM/UTM-Swift.h>` or it's "file not found". Patch
+#     every ObjC source in the UTM tree (not the sysroot).
+find "$CLONE" -type f \( -name "*.m" -o -name "*.mm" \) -not -path "*/sysroot-*" \
+  -exec perl -0pi -e 's{#import "UTM-Swift.h"}{#import <UTM/UTM-Swift.h>}g' {} +
+echo "   rewrote #import \"UTM-Swift.h\" -> <UTM/UTM-Swift.h> in ObjC sources"
+
 # 3. Convert the iOS-SE app target -> UTM.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
 
