@@ -48,6 +48,14 @@ target.build_configurations.each do |config|
   s['DYLIB_INSTALL_NAME_BASE'] = '@rpath'
   s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/Frameworks', '@loader_path/Frameworks']
 
+  # The framework's own ObjC files import the module's INTERNAL Swift interface via the
+  # quoted "UTM-Swift.h" (the public <UTM/UTM-Swift.h> exposes only public @objc, but UTM's
+  # ObjC needs internal @objc). Ensure the generated internal header dir is searched.
+  hsp = s['HEADER_SEARCH_PATHS']
+  hsp = hsp.is_a?(Array) ? hsp.dup : (hsp ? [hsp] : ['$(inherited)'])
+  ['$(DERIVED_SOURCES_DIR)', '$(DERIVED_FILE_DIR)'].each { |p| hsp << p unless hsp.include?(p) }
+  s['HEADER_SEARCH_PATHS'] = hsp
+
   # Frameworks can't use a bridging header — the umbrella replaces it.
   s.delete('SWIFT_OBJC_BRIDGING_HEADER')
 
