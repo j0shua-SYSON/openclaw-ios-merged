@@ -44,7 +44,11 @@ for f in \
   Services/UTMPasteboard.swift \
   Services/UTMExtensions.swift \
   Platform/iOS/UTMPatches.swift; do
-  [ -f "$CLONE/$f" ] && perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$CLONE/$f"
+  [ -f "$CLONE/$f" ] || continue
+  # space form: `@objc class/func/var ...`
+  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$CLONE/$f"
+  # custom-selector form: `@objc(name)` on its own line before the decl (e.g. generalPasteboard).
+  perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$CLONE/$f"
 done
 echo "   framework-style UTM-Swift.h import + public @objc interop symbols"
 
