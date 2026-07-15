@@ -29,27 +29,27 @@ UTM release, and we still must build UTM's app layer from source (see the sysroo
   `CocoaSpice_CocoaSpiceRenderer.bundle`, `InAppSettingsKit`/`ZIPFoundation` bundles,
   `Assets.car`, `Settings.bundle`, localizations, `Metadata.appintents`.
 
-## The crux: the sysroot headers
+## The crux: the sysroot headers — RESOLVED
 
-The prebuilt IPA gives us the **libs** (the ~60 framework binaries) but **not the headers**.
-UTM's app layer (`Services/`, QEMUKit, CocoaSpice, `CSMain`) compiles against the sysroot's
-`include/` — glib.h, qapi/*, spice, etc. `build_utm.sh -s iOS-SE` expects a sysroot with
-both. So the plan must **assemble a sysroot**: prebuilt framework binaries (from the IPA,
-relaid into the sysroot's `lib/`+`Frameworks/` layout) + a matching `include/`. Getting a
-coherent `include/` without compiling the deps is the open problem — options:
-1. Header-install only: run the `make install` header steps of `build_dependencies.sh` (still
-   builds most of glib/qemu to generate configured headers — partial slowness).
-2. Pull headers from the pinned dep source (glib/qemu/spice tags UTM uses) + the generated
-   config headers — fragile ABI matching.
-3. Full sysroot build, cached (the from-source path we rejected for OOM/time) — fallback.
-This is the first thing to prototype; it determines whether the prebuilt path is viable.
+The prebuilt IPA has the **libs** but not the **headers** UTM's app layer compiles against.
+Turns out UTM's CI **uploads the whole sysroot** (`include/` + `lib/` + `Frameworks/`) as a
+downloadable artifact `Sysroot-ios-tci-arm64`. We grabbed it (run 25291766660, UTM SHA
+`e4a4c34b671284263fc69f81b607de494d7e9b65`) and **re-hosted it in our own repo** —
+release `utm-sysroot`, asset `sysroot.tgz` (385 MB) — because the upstream artifact expires
+2026-08-01. Verified layout: `sysroot-ios-tci-arm64/{include,lib,Frameworks,bin,host,share,...}`
+with real headers (qemu-plugin.h, glib, spice-client-glib) and the compiled QEMU/dep
+frameworks. So the prebuilt path is fully viable and the app-layer build has everything it needs.
+
+**Pin UTM to `e4a4c34`** (the sysroot's SHA) so the app layer's headers/ABI match. Our CI
+downloads the sysroot from our `utm-sysroot` release (same-repo, stable), extracts it to the
+UTM clone root, then runs `build_utm.sh`-equivalent against scheme `iOS-SE`.
 
 ## Milestones (each a CI iteration on utm-mode)
 
 0. ✅ Research: map UTM-SE.ipa, pick the prebuilt path. (this doc)
-1. Sysroot assembly: extract the ~60 framework binaries from UTM-SE.ipa + resolve headers →
-   a sysroot `build_utm.sh` accepts. **Highest-risk milestone.**
-2. Build UTM's app layer (scheme `iOS-SE`) → convert the app target to `UTMSE.framework`
+1. ✅ Sysroot: downloaded UTM's `Sysroot-ios-tci-arm64` artifact + re-hosted as our
+   `utm-sysroot` release (385 MB). Headers + QEMU/dep libs confirmed present.
+2. Build UTM's app layer (scheme `iOS-SE`) against the sysroot → convert the app target to `UTMSE.framework`
    (drop QEMUHelper/Remote/extensions; UTM SE already runs QEMU in-process via dlopen since
    iOS can't spawn processes). Neutralize `@main`.
 3. Runtime: a `UTMLauncher` factory that presents UTM's root VM-list VC; isolate VM storage
