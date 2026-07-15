@@ -9,7 +9,7 @@ on:
   push:
     branches: [utm-mode]
     paths:
-      - "Modes/UTM/**"
+      - "Modes/UTM/fork/**"
       - ".github/workflows/utm-build.yml"
 
 env:
@@ -53,8 +53,9 @@ jobs:
           set -o pipefail
           ./scripts/build_utm.sh -k iphoneos -s iOS-SE -a arm64 -o UTM \
             2>&1 | tee build.log \
-            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: |CompileSwift|Ld " || true
-          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::UTM SE build did not succeed"; exit 1; }
+            | grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)|Undefined symbols|ld: |Ld " || true
+          # xcodebuild archive prints ARCHIVE SUCCEEDED (not BUILD SUCCEEDED).
+          grep -q "\*\* ARCHIVE SUCCEEDED \*\*" build.log || { echo "::error::UTM SE archive did not succeed"; exit 1; }
 
       - name: Diagnostics (always)
         if: always()

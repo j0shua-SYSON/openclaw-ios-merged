@@ -49,9 +49,18 @@ UTM clone root, then runs `build_utm.sh`-equivalent against scheme `iOS-SE`.
 0. ✅ Research: map UTM-SE.ipa, pick the prebuilt path. (this doc)
 1. ✅ Sysroot: downloaded UTM's `Sysroot-ios-tci-arm64` artifact + re-hosted as our
    `utm-sysroot` release (385 MB). Headers + QEMU/dep libs confirmed present.
-2. Build UTM's app layer (scheme `iOS-SE`) against the sysroot → convert the app target to `UTMSE.framework`
-   (drop QEMUHelper/Remote/extensions; UTM SE already runs QEMU in-process via dlopen since
-   iOS can't spawn processes). Neutralize `@main`.
+2. **App layer builds — ✅ 2a done.** Validated `xcodebuild archive -scheme iOS-SE` against our
+   sysroot on macos-15 / **Xcode 26** → `** ARCHIVE SUCCEEDED **`, `UTM SE.app` with all ~60 QEMU/dep
+   frameworks embedded from the sysroot. (Notes: the sysroot dir matches case-insensitively —
+   our `sysroot-ios-tci-arm64` vs the project's `sysroot-iOS-TCI-arm64`; `xcodebuild archive`
+   prints `ARCHIVE SUCCEEDED`, not `BUILD SUCCEEDED`.)
+   **2b (next):** convert the `iOS-SE` app target → `UTMSE.framework`. It's a standard
+   `product-type.application` with phases: Generate-Info.plist / Sources / Frameworks / Resources /
+   Patch-Settings / **Embed Libraries**. Conversion: flip product type; **drop "Embed Libraries"**
+   (the ~60 QEMU/dep frameworks go into OpenClaw's `Frameworks/`, not nested in UTMSE.framework);
+   neutralize the SwiftUI `@main` app entry; add a `UTMLauncher` returning UTM's root VC via
+   UIHostingController (Feather pattern). UTM SE runs QEMU in-process via dlopen (iOS can't spawn
+   processes), which suits embedding.
 3. Runtime: a `UTMLauncher` factory that presents UTM's root VM-list VC; isolate VM storage
    to `Documents/UTM/`; redirect `Bundle.main` resource lookups (firmware, spice bundle) to
    the framework bundle.
