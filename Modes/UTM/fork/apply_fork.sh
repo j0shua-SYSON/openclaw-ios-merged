@@ -47,8 +47,11 @@ UI_SRC=""
 for d in Services Platform Configuration Renderer Scripting Intents Remote; do
   [ -d "$CLONE/$d" ] && UI_SRC="$UI_SRC $CLONE/$d"
 done
-find $UI_SRC -type f -name "*.swift" 2>/dev/null | while read -r f; do
-  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$f"
+find $UI_SRC -type f -name "*.swift" -not -name "UTMLauncher.swift" 2>/dev/null | while read -r f; do
+  # space form: `@objc class/func/var ...`. The `@` in the guard skips `@objc @MainActor`/
+  # `@objc @available` etc. (an access modifier can't precede another attribute).
+  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open|@))/\@objc public /g' "$f"
+  # custom-selector form: `@objc(name)` on its own line before the decl (e.g. generalPasteboard).
   perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$f"
 done
 echo "   framework-style UTM-Swift.h import + broad public @objc across app-layer Swift"
