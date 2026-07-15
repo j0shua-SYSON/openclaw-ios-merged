@@ -1,0 +1,68 @@
+name: UTM SE build (validate)
+
+# Milestone 2a for the UTM SE mode embed: prove our re-hosted prebuilt sysroot builds
+# UTM SE (scheme iOS-SE) on our CI, on an UNMODIFIED UTM clone, before investing in the
+# app-target -> framework conversion. Manual, or on push to utm-mode. Never on main.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [utm-mode]
+    paths:
+      - "Modes/UTM/**"
+      - ".github/workflows/utm-build.yml"
+
+env:
+  UTM_REPO: https://github.com/utmapp/UTM.git
+  UTM_SHA: e4a4c34b671284263fc69f81b607de494d7e9b65   # matches the utm-sysroot release
+  XCODE_PATH: /Applications/Xcode_26.0.app             # UTM builds with Xcode 26
+
+jobs:
+  validate:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Clone UTM + submodules
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$UTM_REPO" utm
+          cd utm
+          git checkout "$UTM_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4 || true
+
+      - name: Download + extract our prebuilt sysroot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release download utm-sysroot --repo "${{ github.repository }}" --pattern sysroot.tgz --dir utm
+          cd utm
+          tar -xzf sysroot.tgz && rm sysroot.tgz
+          echo "=== sysroot present ==="; ls -d sysroot-ios-tci-arm64 && ls sysroot-ios-tci-arm64 | head
+
+      - name: Select Xcode 26
+        run: |
+          if [ -d "$XCODE_PATH" ]; then sudo xcode-select -s "$XCODE_PATH"; else echo "::warning::$XCODE_PATH missing; using $(xcode-select -p)"; fi
+          xcodebuild -version
+
+      - name: Build UTM SE (unmodified, arm64 device)
+        run: |
+          cd utm
+          set -o pipefail
+          ./scripts/build_utm.sh -k iphoneos -s iOS-SE -a arm64 -o UTM \
+            2>&1 | tee build.log \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: |CompileSwift|Ld " || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::UTM SE build did not succeed"; exit 1; }
+
+      - name: Diagnostics (always)
+        if: always()
+        run: |
+          cd utm
+          echo "=== last 100 lines of build.log ==="
+          tail -100 build.log 2>/dev/null || echo "(no build.log)"
+          echo "=== archive app + its frameworks ==="
+          APP=$(find UTM.xcarchive -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -1)
+          echo "app: $APP"
+          [ -n "$APP" ] && ls "$APP/Frameworks" 2>/dev/null | head -40 || true
