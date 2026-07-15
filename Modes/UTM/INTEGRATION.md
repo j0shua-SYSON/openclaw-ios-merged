@@ -61,6 +61,31 @@ UTM clone root, then runs `build_utm.sh`-equivalent against scheme `iOS-SE`.
    neutralize the SwiftUI `@main` app entry; add a `UTMLauncher` returning UTM's root VC via
    UIHostingController (Feather pattern). UTM SE runs QEMU in-process via dlopen (iOS can't spawn
    processes), which suits embedding.
+### M2b convert spec (mapped; convert_to_framework.rb is the iterative piece)
+
+Target `iOS-SE` (`CEA45E1F263519B5002FA97D`): `PRODUCT_NAME "UTM SE"`, `PRODUCT_MODULE_NAME UTM`,
+`SWIFT_OBJC_BRIDGING_HEADER Services/Swift-Bridging-Header.h`. Entry `@main class Main`
+(Platform/Main.swift) → `Main.main()` → (JIT block skipped for SE) → `UTMPatches.patchAll()` +
+`registerDefaultsFromSettingsBundle()` + `Tips.configure()` → `UTMApp.main()`; root =
+`UTMSingleWindowView(data: UTMData())`.
+
+Conversion (mirrors Delta):
+- product-type application → framework; **PRODUCT_NAME = UTM** (framework name MUST equal the
+  Clang/Swift module name `UTM`, or "missing module UTM"); keep PRODUCT_MODULE_NAME = UTM.
+- MACH_O_TYPE mh_dylib, DEFINES_MODULE YES, INFOPLIST_FILE UTMMode-Info.plist, code-signing off,
+  @rpath install name.
+- **Neutralize `@main`** in Platform/Main.swift (illegal in a framework) — comment the attribute;
+  `Main.main()` is never called (we boot via UTMLauncher).
+- **Drop the "Embed Libraries" copy phase** (`CEA45F71…`, dstSubfolderSpec 10 = Frameworks): the
+  ~60 QEMU/dep frameworks go into OpenClaw's Frameworks/, not nested inside UTM.framework.
+- ✅ **UTMLauncher.swift** written (the @objc boundary + non-JIT setup + UTMSingleWindowView root).
+- **The crux — bridging header → umbrella:** frameworks can't use SWIFT_OBJC_BRIDGING_HEADER.
+  Services/Swift-Bridging-Header.h `#include`s ~30 of UTM's own ObjC headers (UTMQemuSystem,
+  UTMProcess, VMDisplayMetalViewController, the UTMLegacyQemuConfiguration family, …), several of
+  which pull non-modular C/QEMU headers. Remove the bridging-header setting and expose those via a
+  framework umbrella + public Headers phase — expect "non-modular include in framework module" /
+  "missing required modules" iterations (Delta hit the same class). This is the make-or-break of 2b.
+
 3. Runtime: a `UTMLauncher` factory that presents UTM's root VM-list VC; isolate VM storage
    to `Documents/UTM/`; redirect `Bundle.main` resource lookups (firmware, spice bundle) to
    the framework bundle.
