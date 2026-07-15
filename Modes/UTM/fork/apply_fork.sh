@@ -27,6 +27,18 @@ grep -q "// @main (removed for UTM.framework)" "$CLONE/Platform/Main.swift" \
   || { echo "ERROR: @main neutralization did not apply"; exit 1; }
 echo "   neutralized @main in Platform/Main.swift"
 
+# 2b. Swift-generated-header interop. A framework only emits the PUBLIC <UTM/UTM-Swift.h>
+#     (public @objc), so UTM's own ObjC must import it framework-style, and the Swift @objc
+#     declarations that ObjC consumes must be public. Rewrite the imports, then promote the
+#     small set of ObjC-consumed Swift symbols (only 7 ObjC files consume UTM-Swift.h).
+find "$CLONE" -type f \( -name "*.m" -o -name "*.mm" \) -not -path "*/sysroot-*" \
+  -exec perl -0pi -e 's{#import "UTM-Swift.h"}{#import <UTM/UTM-Swift.h>}g' {} +
+
+# VMDisplayViewControllerDelegate: the display/input ObjC controllers use id<...> of this.
+perl -0pi -e 's/\@objc protocol VMDisplayViewControllerDelegate/\@objc public protocol VMDisplayViewControllerDelegate/' \
+  "$CLONE/Platform/iOS/Display/VMDisplayViewControllerDelegate.swift"
+echo "   framework-style UTM-Swift.h import + public VMDisplayViewControllerDelegate"
+
 # 3. Convert the iOS-SE app target -> UTM.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
 
