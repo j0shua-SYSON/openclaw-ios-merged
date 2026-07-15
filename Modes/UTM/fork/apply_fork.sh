@@ -38,19 +38,20 @@ find "$CLONE" -type f \( -name "*.m" -o -name "*.mm" \) -not -path "*/sysroot-*"
 # public so they appear in the framework's public <UTM/UTM-Swift.h>. Guarded so decls that
 # already carry an access keyword are untouched — critically, the @objc private dynamic
 # swizzling patches in UTMPatches.swift stay private. Scoped to the known interop files.
-for f in \
-  Platform/iOS/Display/VMDisplayViewControllerDelegate.swift \
-  Platform/iOS/Display/VMDisplayViewController.swift \
-  Services/UTMPasteboard.swift \
-  Services/UTMExtensions.swift \
-  Platform/iOS/UTMPatches.swift; do
-  [ -f "$CLONE/$f" ] || continue
-  # space form: `@objc class/func/var ...`
-  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$CLONE/$f"
-  # custom-selector form: `@objc(name)` on its own line before the decl (e.g. generalPasteboard).
-  perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$CLONE/$f"
+# @objc signatures are ObjC-compatible by construction, so promoting every @objc decl in
+# UTM's app-layer Swift to public is self-consistent (the @objc types become public
+# together) and exposes the whole reverse-interop surface to the framework header at once.
+# Scoped to UTM's own sources (not the QEMUKit/CocoaSpice submodule frameworks). The guard
+# preserves the @objc private dynamic swizzling in UTMPatches.swift.
+UI_SRC=""
+for d in Services Platform Configuration Renderer Scripting Intents Remote; do
+  [ -d "$CLONE/$d" ] && UI_SRC="$UI_SRC $CLONE/$d"
 done
-echo "   framework-style UTM-Swift.h import + public @objc interop symbols"
+find $UI_SRC -type f -name "*.swift" 2>/dev/null | while read -r f; do
+  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$f"
+  perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$f"
+done
+echo "   framework-style UTM-Swift.h import + broad public @objc across app-layer Swift"
 
 # 3. Convert the iOS-SE app target -> UTM.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
