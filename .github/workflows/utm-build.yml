@@ -1,8 +1,8 @@
-name: UTM SE build (validate)
+name: UTM SE build (framework)
 
-# Milestone 2a for the UTM SE mode embed: prove our re-hosted prebuilt sysroot builds
-# UTM SE (scheme iOS-SE) on our CI, on an UNMODIFIED UTM clone, before investing in the
-# app-target -> framework conversion. Manual, or on push to utm-mode. Never on main.
+# Milestone 2b for the UTM SE mode embed: apply the fork (iOS-SE app target ->
+# UTM.framework: bridging-header -> umbrella, drop Embed Libraries, neutralize @main) and
+# build UTM.framework against our prebuilt sysroot. Manual, or on push to utm-mode.
 
 on:
   workflow_dispatch:
@@ -15,13 +15,18 @@ on:
 env:
   UTM_REPO: https://github.com/utmapp/UTM.git
   UTM_SHA: e4a4c34b671284263fc69f81b607de494d7e9b65   # matches the utm-sysroot release
-  XCODE_PATH: /Applications/Xcode_26.0.app             # UTM builds with Xcode 26
+  XCODE_PATH: /Applications/Xcode_26.0.app
 
 jobs:
-  validate:
+  build:
     runs-on: macos-15
     timeout-minutes: 90
     steps:
+      - name: Checkout OpenClaw (for the fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
       - name: Clone UTM + submodules
         run: |
           set -e
@@ -40,30 +45,55 @@ jobs:
           gh release download utm-sysroot --repo "${{ github.repository }}" --pattern sysroot.tgz --dir utm
           cd utm
           tar -xzf sysroot.tgz && rm sysroot.tgz
-          echo "=== sysroot present ==="; ls -d sysroot-ios-tci-arm64 && ls sysroot-ios-tci-arm64 | head
+          ls -d sysroot-ios-tci-arm64 >/dev/null
+
+      - name: Apply OpenClaw UTM fork
+        run: |
+          set -e
+          sudo gem install xcodeproj --no-document
+          chmod +x openclaw/Modes/UTM/fork/apply_fork.sh
+          bash openclaw/Modes/UTM/fork/apply_fork.sh "$PWD/utm" "$PWD/openclaw/Modes/UTM/fork"
 
       - name: Select Xcode 26
         run: |
           if [ -d "$XCODE_PATH" ]; then sudo xcode-select -s "$XCODE_PATH"; else echo "::warning::$XCODE_PATH missing; using $(xcode-select -p)"; fi
           xcodebuild -version
 
-      - name: Build UTM SE (unmodified, arm64 device)
+      - name: Build UTM.framework (arm64 device)
         run: |
           cd utm
           set -o pipefail
-          ./scripts/build_utm.sh -k iphoneos -s iOS-SE -a arm64 -o UTM \
+          xcodebuild build \
+            -project UTM.xcodeproj \
+            -scheme iOS-SE \
+            -sdk iphoneos -arch arm64 \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             2>&1 | tee build.log \
-            | grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)|Undefined symbols|ld: |Ld " || true
-          # xcodebuild archive prints ARCHIVE SUCCEEDED (not BUILD SUCCEEDED).
-          grep -q "\*\* ARCHIVE SUCCEEDED \*\*" build.log || { echo "::error::UTM SE archive did not succeed"; exit 1; }
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: |non-modular|missing required|module map" || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::UTM.framework build did not succeed"; exit 1; }
 
       - name: Diagnostics (always)
         if: always()
         run: |
           cd utm
-          echo "=== last 100 lines of build.log ==="
-          tail -100 build.log 2>/dev/null || echo "(no build.log)"
-          echo "=== archive app + its frameworks ==="
-          APP=$(find UTM.xcarchive -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -1)
-          echo "app: $APP"
-          [ -n "$APP" ] && ls "$APP/Frameworks" 2>/dev/null | head -40 || true
+          echo "=== errors (if any) ==="
+          grep -E "error:|Undefined symbols|non-modular|missing required|module map" build.log 2>/dev/null | head -40 || true
+          echo "=== last 60 lines ==="
+          tail -60 build.log 2>/dev/null || true
+          FW=$(find build/Build/Products -type d -name "UTM.framework" 2>/dev/null | grep -iv EagerLinking | head -1)
+          echo "framework: $FW"
+          if [ -n "$FW" ]; then
+            ls -la "$FW" | head -30
+            file "$FW/UTM" 2>/dev/null || true
+            mkdir -p ../out && tar czf ../out/UTM.framework.tgz -C "$(dirname "$FW")" UTM.framework
+          fi
+
+      - name: Upload UTM.framework
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: UTM-framework
+          path: out/UTM.framework.tgz
+          if-no-files-found: ignore
