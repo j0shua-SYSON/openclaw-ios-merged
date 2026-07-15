@@ -38,23 +38,24 @@ find "$CLONE" -type f \( -name "*.m" -o -name "*.mm" \) -not -path "*/sysroot-*"
 # public so they appear in the framework's public <UTM/UTM-Swift.h>. Guarded so decls that
 # already carry an access keyword are untouched — critically, the @objc private dynamic
 # swizzling patches in UTMPatches.swift stay private. Scoped to the known interop files.
-# @objc signatures are ObjC-compatible by construction, so promoting every @objc decl in
-# UTM's app-layer Swift to public is self-consistent (the @objc types become public
-# together) and exposes the whole reverse-interop surface to the framework header at once.
-# Scoped to UTM's own sources (not the QEMUKit/CocoaSpice submodule frameworks). The guard
-# preserves the @objc private dynamic swizzling in UTMPatches.swift.
-UI_SRC=""
-for d in Services Platform Configuration Renderer Scripting Intents Remote; do
-  [ -d "$CLONE/$d" ] && UI_SRC="$UI_SRC $CLONE/$d"
+# Promote only the Swift @objc symbols UTM's ObjC (the 7 files that import UTM-Swift.h)
+# actually consumes — NOT every @objc class, because making an unrelated pure-Swift class
+# public cascades access onto all its protocol conformances/overrides. These files are
+# either extensions on ObjC/UIKit types (no class-public cascade) or the two small NSObject
+# subclasses ObjC references directly (UTMPasteboard, UTMQemuPort). Guard preserves the
+# @objc private dynamic swizzling in UTMPatches.swift.
+for f in \
+  Platform/iOS/Display/VMDisplayViewControllerDelegate.swift \
+  Platform/iOS/Display/VMDisplayViewController.swift \
+  Services/UTMPasteboard.swift \
+  Services/UTMExtensions.swift \
+  Platform/iOS/UTMPatches.swift \
+  Services/UTMQemuPort.swift; do
+  [ -f "$CLONE/$f" ] || continue
+  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open|@))/\@objc public /g' "$CLONE/$f"
+  perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$CLONE/$f"
 done
-find $UI_SRC -type f -name "*.swift" -not -name "UTMLauncher.swift" 2>/dev/null | while read -r f; do
-  # space form: `@objc class/func/var ...`. The `@` in the guard skips `@objc @MainActor`/
-  # `@objc @available` etc. (an access modifier can't precede another attribute).
-  perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open|@))/\@objc public /g' "$f"
-  # custom-selector form: `@objc(name)` on its own line before the decl (e.g. generalPasteboard).
-  perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$f"
-done
-echo "   framework-style UTM-Swift.h import + broad public @objc across app-layer Swift"
+echo "   framework-style UTM-Swift.h import + targeted public @objc interop symbols"
 
 # 3. Convert the iOS-SE app target -> UTM.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
