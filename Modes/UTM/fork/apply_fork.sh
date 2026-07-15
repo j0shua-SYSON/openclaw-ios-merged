@@ -34,10 +34,19 @@ echo "   neutralized @main in Platform/Main.swift"
 find "$CLONE" -type f \( -name "*.m" -o -name "*.mm" \) -not -path "*/sysroot-*" \
   -exec perl -0pi -e 's{#import "UTM-Swift.h"}{#import <UTM/UTM-Swift.h>}g' {} +
 
-# VMDisplayViewControllerDelegate: the display/input ObjC controllers use id<...> of this.
-perl -0pi -e 's/\@objc protocol VMDisplayViewControllerDelegate/\@objc public protocol VMDisplayViewControllerDelegate/' \
-  "$CLONE/Platform/iOS/Display/VMDisplayViewControllerDelegate.swift"
-echo "   framework-style UTM-Swift.h import + public VMDisplayViewControllerDelegate"
+# Promote the @objc Swift symbols that UTM's ObjC display/input controllers consume to
+# public so they appear in the framework's public <UTM/UTM-Swift.h>. Guarded so decls that
+# already carry an access keyword are untouched — critically, the @objc private dynamic
+# swizzling patches in UTMPatches.swift stay private. Scoped to the known interop files.
+for f in \
+  Platform/iOS/Display/VMDisplayViewControllerDelegate.swift \
+  Platform/iOS/Display/VMDisplayViewController.swift \
+  Services/UTMPasteboard.swift \
+  Services/UTMExtensions.swift \
+  Platform/iOS/UTMPatches.swift; do
+  [ -f "$CLONE/$f" ] && perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open))/\@objc public /g' "$CLONE/$f"
+done
+echo "   framework-style UTM-Swift.h import + public @objc interop symbols"
 
 # 3. Convert the iOS-SE app target -> UTM.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
