@@ -5,6 +5,11 @@ name: iOS Build (unsigned)
 
 on:
   workflow_dispatch:
+    inputs:
+      include_utm:
+        description: "Embed UTM SE (adds ~2GB + ~30min sign). Leave off for fast iteration; turn on for the final build."
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths-ignore:
@@ -246,13 +251,14 @@ jobs:
       # Vendor/UTMPrebuilt/{Frameworks,Resources}. Cached on the UTM SHA + fork scripts.
       - name: Restore UTM prebuilt cache
         id: utm-cache
+        if: github.event.inputs.include_utm == 'true'
         uses: actions/cache/restore@v4
         with:
           path: Vendor/UTMPrebuilt
           key: utm-fw-v2-${{ env.UTM_SHA }}-${{ hashFiles('Modes/UTM/fork/**') }}
 
       - name: Build UTM.framework + assemble prebuilt
-        if: steps.utm-cache.outputs.cache-hit != 'true'
+        if: github.event.inputs.include_utm == 'true' && steps.utm-cache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -301,11 +307,24 @@ jobs:
           du -sh Vendor/UTMPrebuilt Vendor/UTMPrebuilt/Resources/qemu 2>/dev/null || true
 
       - name: Save UTM prebuilt cache
-        if: steps.utm-cache.outputs.cache-hit != 'true'
+        if: github.event.inputs.include_utm == 'true' && steps.utm-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: Vendor/UTMPrebuilt
           key: utm-fw-v2-${{ env.UTM_SHA }}-${{ hashFiles('Modes/UTM/fork/**') }}
+
+      # When UTM is excluded (the fast-iteration default), strip its framework dependency from
+      # project.yml so xcodegen doesn't require Vendor/UTMPrebuilt. The UTM Swift refs are gated
+      # by #if OPENCLAW_INCLUDE_UTM (unset here), so nothing references UTMLauncher. Re-add UTM by
+      # dispatching with include_utm=true for the final build.
+      - name: Exclude UTM from project (fast iteration)
+        if: github.event.inputs.include_utm != 'true'
+        run: |
+          perl -0pi -e 's/^[^\n]*- framework: Vendor\/UTMPrebuilt\/Frameworks\/UTM\.framework\n[^\n]*embed: true\n//m' project.yml
+          if grep -q "Vendor/UTMPrebuilt/Frameworks/UTM.framework" project.yml; then
+            echo "::error::failed to strip UTM.framework from project.yml"; exit 1
+          fi
+          echo "UTM excluded from project.yml (fast build)"
 
       - name: Generate build/Version.xcconfig
         run: |
@@ -331,6 +350,11 @@ jobs:
       - name: Build unsigned archive
         run: |
           set -o pipefail
+          # Enable the UTM code paths (gated by #if OPENCLAW_INCLUDE_UTM) only for the final build.
+          UTM_COND=()
+          if [ "${{ github.event.inputs.include_utm }}" = "true" ]; then
+            UTM_COND=("SWIFT_ACTIVE_COMPILATION_CONDITIONS=\$(inherited) OPENCLAW_INCLUDE_UTM")
+          fi
           xcodebuild archive \
             -project OpenClaw.xcodeproj \
             -scheme OpenClaw \
@@ -342,7 +366,8 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
-            ENABLE_APP_INTENTS_METADATA_GENERATION=NO
+            ENABLE_APP_INTENTS_METADATA_GENERATION=NO \
+            "${UTM_COND[@]}"
 
       # UTM SE needs its ~63 runtime dep frameworks and QEMU firmware inside the app bundle.
       # Xcode embedded UTM.framework itself (project.yml dependency); OpenClaw's code never
@@ -350,6 +375,7 @@ jobs:
       # Frameworks/ here. QEMU firmware + vulkan ICDs go at the bundle ROOT because UTM reads
       # them from Bundle.main (= this app once embedded). zsign deep-signs everything later.
       - name: Embed UTM runtime frameworks + resources
+        if: github.event.inputs.include_utm == 'true'
         run: |
           set -e
           APP=$(ls -d build/OpenClaw.xcarchive/Products/Applications/*.app | head -1)

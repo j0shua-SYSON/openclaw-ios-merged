@@ -30,7 +30,9 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "folium", title: "Folium", subtitle: "DS · PS1 · GB/GBC · GBA", systemImage: "leaf.fill"),
         AppMode(id: "ish", title: "iSH", subtitle: "Linux shell (x86 emulation)", systemImage: "terminal"),
         AppMode(id: "feather", title: "Feather", subtitle: "On-device app signing & install", systemImage: "signature"),
+        #if OPENCLAW_INCLUDE_UTM
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
+        #endif
         AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
@@ -291,6 +293,7 @@ struct ISHModeView: UIViewControllerRepresentable {
 /// UTMLauncher applies UTM's runtime patches + registers Settings.bundle defaults before
 /// returning the hosting VC. `UTM.framework` is the forked UTM iOS-SE app layer (QEMU
 /// TCTI, JIT-less); see Modes/UTM/fork. VM storage is isolated to Documents/UTM.
+#if OPENCLAW_INCLUDE_UTM
 struct UTMModeView: UIViewControllerRepresentable {
     func makeUIViewController(context _: Context) -> UIViewController {
         UTMLauncher.makeRootViewController()
@@ -298,6 +301,7 @@ struct UTMModeView: UIViewControllerRepresentable {
 
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
+#endif
 
 /// Hosts SmartTube's real SwiftUI YouTube client (RootView) inside the mode overlay.
 /// SmartTubeLauncher builds the InnerTube API (po_token via the bundled BotGuard JS solver) +
@@ -333,10 +337,12 @@ struct ModeContainerView: View {
             // Real iSH (x86 Linux shell). Same gesture returns to OpenClaw.
             ISHModeView()
                 .ignoresSafeArea()
+        #if OPENCLAW_INCLUDE_UTM
         case "utm":
             // Real UTM SE (JIT-less QEMU VMs). Same gesture returns to OpenClaw.
             UTMModeView()
                 .ignoresSafeArea()
+        #endif
         case "smarttube":
             // SmartTube (YouTube client). Same gesture returns to OpenClaw.
             SmartTubeModeView()
