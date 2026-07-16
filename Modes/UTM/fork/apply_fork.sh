@@ -80,7 +80,14 @@ ruby "$FORK/convert_to_framework.rb" "$CLONE/UTM.xcodeproj"
 SCHEME="$CLONE/UTM.xcodeproj/xcshareddata/xcschemes/iOS-SE.xcscheme"
 if [ -f "$SCHEME" ]; then
   sed -i '' -e 's/BuildableName = "UTM SE.app"/BuildableName = "UTM.framework"/g' "$SCHEME"
-  echo "   repointed iOS-SE.xcscheme buildable -> UTM.framework"
+  # UTM's iOS-SE scheme ships with AddressSanitizer on (enableAddressSanitizer = "YES").
+  # `xcodebuild build -scheme iOS-SE` honours it, so the framework + its statically linked
+  # QEMUKit/CocoaSpice objects get asan-instrumented and drag libclang_rt.asan_ios_dynamic.
+  # Turn it (and UBSan, if present) off for the shippable embed. Also overridden on the
+  # xcodebuild command line as a belt-and-suspenders.
+  sed -i '' -e 's/enableAddressSanitizer = "YES"/enableAddressSanitizer = "NO"/g' \
+             -e 's/enableUBSanitizer = "YES"/enableUBSanitizer = "NO"/g' "$SCHEME"
+  echo "   repointed iOS-SE.xcscheme buildable -> UTM.framework; disabled scheme asan/ubsan"
 fi
 
 echo "== apply_fork(UTM): done =="
