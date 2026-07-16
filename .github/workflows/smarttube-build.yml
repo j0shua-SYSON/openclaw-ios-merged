@@ -14,7 +14,7 @@ on:
 
 env:
   SMARTTUBE_REPO: https://github.com/milika/SmartTubeIOS.git
-  SMARTTUBE_SHA: f638021
+  SMARTTUBE_SHA: efb7dc51be24ed5b8987d2f730004e2b6bd13104
 
 jobs:
   build:
