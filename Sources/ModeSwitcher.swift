@@ -31,6 +31,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "ish", title: "iSH", subtitle: "Linux shell (x86 emulation)", systemImage: "terminal"),
         AppMode(id: "feather", title: "Feather", subtitle: "On-device app signing & install", systemImage: "signature"),
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
+        AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
 }
@@ -298,6 +299,18 @@ struct UTMModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts SmartTube's real SwiftUI YouTube client (RootView) inside the mode overlay.
+/// SmartTubeLauncher builds the InnerTube API (po_token via the bundled BotGuard JS solver) +
+/// the view models and injects RootView's environment. `SmartTubeIOS` is a vendored Swift
+/// package (Vendor/SmartTube); see Modes/SmartTube.
+struct SmartTubeModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        SmartTubeLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -323,6 +336,10 @@ struct ModeContainerView: View {
         case "utm":
             // Real UTM SE (JIT-less QEMU VMs). Same gesture returns to OpenClaw.
             UTMModeView()
+                .ignoresSafeArea()
+        case "smarttube":
+            // SmartTube (YouTube client). Same gesture returns to OpenClaw.
+            SmartTubeModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody

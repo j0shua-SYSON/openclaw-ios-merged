@@ -34,7 +34,7 @@ public final class UTMLauncher: NSObject {
         self.setupOnce()
         let data = UTMData()
         let root = UTMSingleWindowView(data: data)
-        return UIHostingController(rootView: root)
+        return OpenClawModeHostingController(rootView: root)
     }
 
     @MainActor
@@ -71,5 +71,33 @@ public final class UTMLauncher: NSObject {
             }
         }
         UserDefaults.standard.register(defaults: defaults)
+    }
+}
+
+/// A hosting controller that forwards the out-of-process document picker to the window's
+/// top-level view controller. When UTM runs as an embedded OpenClaw mode, its hosting controller
+/// is a child buried in OpenClaw's SwiftUI tree; a *remote* picker (Files runs in a separate
+/// process) presented from there renders but never forwards selection touches back. Presenting it
+/// from the window's topmost controller restores normal touch forwarding. In-app sheets/alerts
+/// are left to present normally so the mode's own UI is unaffected.
+final class OpenClawModeHostingController<Content: View>: UIHostingController<Content> {
+    override func present(_ viewControllerToPresent: UIViewController, animated flag: Bool, completion: (() -> Void)? = nil) {
+        if viewControllerToPresent is UIDocumentPickerViewController,
+           let top = view.window?.rootViewController?.openclaw_topmostPresented,
+           top !== self {
+            top.present(viewControllerToPresent, animated: flag, completion: completion)
+        } else {
+            super.present(viewControllerToPresent, animated: flag, completion: completion)
+        }
+    }
+}
+
+private extension UIViewController {
+    var openclaw_topmostPresented: UIViewController {
+        var top: UIViewController = self
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+        return top
     }
 }

@@ -20,6 +20,11 @@ packages:
   WebRTC:
     url: https://github.com/stasel/WebRTC.git
     exactVersion: 147.0.0
+  # SmartTube (YouTube) mode — vendored SPM package (FirebaseCrashlytics stripped, Swift-5
+  # language mode). OpenClaw imports it directly (SmartTubeLauncher.swift); the po_token JS
+  # solver + localizations ride along as the package's Bundle.module resource bundle.
+  SmartTubeIOS:
+    path: Vendor/SmartTube/SmartTubeIOS
 
 schemes:
   OpenClaw:
@@ -159,6 +164,14 @@ targets:
       # by CI. UTM.framework's @executable_path/Frameworks rpath finds the deps at runtime.
       - framework: Vendor/UTMPrebuilt/Frameworks/UTM.framework
         embed: true
+      # SmartTube (YouTube) mode — vendored Swift package (Vendor/SmartTube). OpenClaw imports
+      # both products (SmartTubeLauncher.swift builds RootView's environment). After the Firebase
+      # strip its only transitive dep is the Foundation-based SmartTubeIOSCore, so importing is
+      # cheap. po_token JS + localizations ship as the package's Bundle.module resource bundle.
+      - package: SmartTubeIOS
+        product: SmartTubeIOS
+      - package: SmartTubeIOS
+        product: SmartTubeIOSCore
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
