@@ -131,8 +131,8 @@ final class TOSPlayerViewModel: NSObject {
     /// tracker's URLs there would strip auth from the session's remaining watch-history
     /// pings; (2) let TOSPlayerStateStore.play() carry auth over to swipe-created vms,
     /// which never get an onAppear (the cover is already presented when the vm is swapped).
-    private(set) var appliedAuthToken: String? = nil
-    private(set) var appliedSAPISID: String? = nil
+    internal(set) var appliedAuthToken: String? = nil
+    internal(set) var appliedSAPISID: String? = nil
     /// Used by `fetchSponsorSegments()` (TOSPlayerViewModel+SponsorBlock.swift).
     let sponsorService = SponsorBlockService()
     /// Passed to `likeDislike`/`comments` controllers and used to construct
