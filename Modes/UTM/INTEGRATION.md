@@ -86,11 +86,42 @@ Conversion (mirrors Delta):
   framework umbrella + public Headers phase — expect "non-modular include in framework module" /
   "missing required modules" iterations (Delta hit the same class). This is the make-or-break of 2b.
 
-3. Runtime: a `UTMLauncher` factory that presents UTM's root VM-list VC; isolate VM storage
-   to `Documents/UTM/`; redirect `Bundle.main` resource lookups (firmware, spice bundle) to
-   the framework bundle.
-4. Embed: `UTMSE.framework` + all ~60 QEMU/dep frameworks + firmware in project.yml; wire the
-   switcher (`utm` id already in the registry); entitlements; merge → OTA. Device-verify a VM boots.
+   **2b — ✅ RESOLVED (11 CI iterations).** UTM.framework builds green + links. The wall was
+   the app→framework ObjC↔Swift interop: a framework emits only the PUBLIC `<UTM/UTM-Swift.h>`,
+   so every Swift `@objc` symbol UTM's own ObjC consumes had to be made `public`. Scoped the
+   public-ification to the 6 ObjC-consumed interop files (broad passes cascaded onto unrelated
+   pure-Swift classes). Tail: `UTMQemuPort`'s 8 `QEMUPort`/`CSPortDelegate` conformance members
+   promoted to public. See `apply_fork.sh` §2b/§2c.
+3. Runtime: `UTMLauncher.makeRootViewController()` presents `UTMSingleWindowView(data:)`; the
+   `utm` switcher case + `UTMModeView` + bridging-header forward-decl are wired. VM storage
+   isolation to `Documents/UTM/` — TODO (verify on device; UTMData defaults may already scope
+   to Documents).
+4. **Embed — ✅ wired (validating in main CI).** See "M4 packaging — RESOLVED" below.
+
+## M4 packaging — RESOLVED (research + empirical sysroot probe)
+
+- **Deps ship PRE-WRAPPED.** The ios-tci sysroot already contains `Frameworks/NAME.framework`
+  (flat iOS layout, `LC_ID_DYLIB = @rpath/NAME.framework/NAME`), produced by UTM's
+  `scripts/build_dependencies.sh` `fixup_all`. No dylib→framework wrapping in Xcode; `lib/*.dylib`
+  are link-time only. 64 frameworks total (SE embeds 54; we bulk-copy all 64, a harmless superset).
+- **UTM.framework is a monolith** — statically links QEMUKit/QEMUKitInternal/CocoaSpiceNoUsb +
+  all SPM packages (only `.o`/`.swiftmodule` in Products, no sibling frameworks). Ships 3 SPM
+  resource bundles (CocoaSpice, InAppSettingsKit, ZIPFoundation) nested in UTM.framework.
+- **ASan was scheme-only.** `iOS-SE.xcscheme` LaunchAction had `enableAddressSanitizer="YES"`
+  (Debug); `xcodebuild build -scheme` honoured it → `Objects-normal-asan` + a
+  `libclang_rt.asan_ios_dynamic` load. Fix: flip the scheme flag in `apply_fork.sh` +
+  `-enableAddressSanitizer NO`. The sysroot dylibs are NOT asan (verified).
+- **Resource placement:** UTM reads firmware via `Bundle.main.url(forResource:"qemu")` → copies to
+  `Caches/qemu` → QEMU `-L <caches>/qemu`; Vulkan ICDs via `VK_DRIVER_FILES=Bundle.main/vulkan/icd.d`.
+  `Bundle.main` = OpenClaw once embedded, so CI puts `qemu/` + `vulkan/` at the **app bundle root**
+  (no UTM code patch). Only `share/qemu` (316M firmware/ROMs/keymaps) + `share/vulkan` are needed;
+  locale/doc/man dropped.
+- **Embed mechanism:** project.yml link+embeds only `UTM.framework` (resolves the forward-declared
+  `UTMLauncher`); the 63 `@rpath` deps are runtime-only (OpenClaw never references them), so CI
+  bulk-copies them into `App.app/Frameworks/` post-archive and zsign deep-signs. UTM.framework's
+  `@executable_path/Frameworks` rpath finds them; deps find each other via baked `@loader_path/..`.
+- **Size:** Vendor/UTMPrebuilt ≈ 1.9 GB uncompressed (207 MB compressed). Trim opportunity: drop
+  unused qemu arches (m68k/ppc/ppc64/riscv64 ≈ −800 MB) once a VM boots on device.
 
 ## Known runtime risks
 
