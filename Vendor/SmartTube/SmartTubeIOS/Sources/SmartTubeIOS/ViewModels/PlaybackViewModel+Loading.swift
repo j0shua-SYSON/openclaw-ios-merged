@@ -130,8 +130,11 @@ extension PlaybackViewModel {
                                            flushPosition: pos, flushDuration: dur)
             Task { await flush() }
         } else {
-            tracker.transition(to: video.id, cpn: InnerTubeAPI.generateCPN(),
-                               flushPosition: 0, flushDuration: 0)
+            // The transition flush closure is intentionally discarded here (position/duration
+            // are 0). Xcode 26 treats discarding a function-typed result as an error even with
+            // @discardableResult, so bind to _ explicitly. (OpenClaw embed fix.)
+            _ = tracker.transition(to: video.id, cpn: InnerTubeAPI.generateCPN(),
+                                   flushPosition: 0, flushDuration: 0)
         }
 
         // Stop and clear the current item immediately so the previous frame
