@@ -30,9 +30,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "folium", title: "Folium", subtitle: "DS · PS1 · GB/GBC · GBA", systemImage: "leaf.fill"),
         AppMode(id: "ish", title: "iSH", subtitle: "Linux shell (x86 emulation)", systemImage: "terminal"),
         AppMode(id: "feather", title: "Feather", subtitle: "On-device app signing & install", systemImage: "signature"),
-        #if OPENCLAW_INCLUDE_UTM
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
-        #endif
         AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
