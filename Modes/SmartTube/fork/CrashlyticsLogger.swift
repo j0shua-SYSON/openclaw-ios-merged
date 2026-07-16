@@ -29,15 +29,18 @@ struct CrashlyticsLogger: Sendable {
     }
 
     func notice(_ message: @autoclosure () -> String) {
-        logger.notice("\(message(), privacy: .public)")
+        let msg = message()
+        logger.notice("\(msg, privacy: .public)")
     }
 
     func error(_ message: @autoclosure () -> String) {
-        logger.error("\(message(), privacy: .public)")
+        let msg = message()
+        logger.error("\(msg, privacy: .public)")
     }
 
     func debug(_ message: @autoclosure () -> String) {
-        logger.debug("\(message(), privacy: .public)")
+        let msg = message()
+        logger.debug("\(msg, privacy: .public)")
     }
 
     func recordNonFatal(_ error: Error, userInfo: [String: String] = [:]) {
