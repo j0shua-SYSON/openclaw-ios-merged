@@ -77,13 +77,37 @@ final class OpenClawYatteeLocalizationToken {}
 EOF
 echo "   patched String+Localizable -> framework bundle"
 
-# 5. Default the player backend to AVPlayer (MPV stays linked but unused at runtime): PlayerModel's
-#    activeBackend, the Defaults key, and the default QualityProfile.
-perl -0pi -e 's/activeBackend = PlayerBackendType\.mpv/activeBackend = PlayerBackendType.appleAVPlayer/' \
-  "$CLONE/Model/Player/PlayerModel.swift"
-perl -0pi -e 's/("activeBackend", default: )\.mpv/${1}.appleAVPlayer/' "$CLONE/Shared/Defaults.swift"
+# 5. Default the player backend to AVPlayer (MPV stays linked but unused at runtime).
+#
+#    The QualityProfile is the ONLY patch that matters, and it must stay the only one. Yattee picks
+#    the backend per video at playback time from `qualityProfile?.backend ?? automaticProfile?.backend`
+#    (PlayerModel.playerItem/loadVideo path) and routes it through changeActiveBackend(from:to:),
+#    which is what assigns `activeBackend`. PlayerModel's `activeBackend` stored default is merely the
+#    transient value before the first video plays, and Defaults[.activeBackend] is written there but
+#    never read back at startup.
+#
+#    DO NOT also patch `activeBackend = PlayerBackendType.mpv` in PlayerModel.swift. It gains nothing
+#    (changeActiveBackend overwrites it on first play regardless) and it DEADLOCKS on launch:
+#      PlayerModel.shared (swift_once, main thread)
+#        -> init() -> `currentRate = playerRate` -> didSet -> handleCurrentRateChange()
+#        -> backend.setRate() -- with activeBackend already .appleAVPlayer this resolves to
+#           avPlayerBackend instead of mpvBackend --
+#        -> AVPlayer.setRate: -> fires KVO SYNCHRONOUSLY
+#        -> AVPlayerBackend.addPlayerTimeControlStatusObserver()'s closure -> `self.model...`
+#        -> `var model: PlayerModel { .shared }` is COMPUTED -> re-enters PlayerModel.shared
+#        -> _dispatch_once_wait on a once held by this very thread
+#        -> "BUG IN CLIENT OF LIBDISPATCH: trying to lock recursively" -> EXC_BREAKPOINT.
+#    Upstream only escapes this by ordering luck: .mpv routes setRate to mpvBackend, which touches no
+#    AVPlayer KVO, so `shared` finishes initializing before anything can re-enter it. Leaving line 57
+#    at .mpv keeps that ordering AND still yields AVPlayer playback (activeBackend != backend at the
+#    selection guard is then true, so it switches to AVPlayer on the first play).
 perl -0pi -e 's/(id: "default", backend: )\.mpv/${1}.appleAVPlayer/' "$CLONE/Model/QualityProfile.swift"
-echo "   defaulted player backend -> AVPlayer"
+grep -q 'id: "default", backend: .appleAVPlayer' "$CLONE/Model/QualityProfile.swift" \
+  || { echo "ERROR: QualityProfile backend patch did not apply"; exit 1; }
+# Guard the footgun: if PlayerModel ever ships .appleAVPlayer as the stored default, we deadlock.
+grep -q 'activeBackend = PlayerBackendType.mpv' "$CLONE/Model/Player/PlayerModel.swift" \
+  || { echo "ERROR: PlayerModel.activeBackend is not .mpv — launch would deadlock (see note above)"; exit 1; }
+echo "   defaulted player backend -> AVPlayer (via QualityProfile; PlayerModel left at .mpv by design)"
 
 # 6. Convert the iOS app target -> Yattee.framework.
 ruby "$FORK/convert_to_framework.rb" "$CLONE/Yattee.xcodeproj"
