@@ -25,6 +25,13 @@ if grep -q "firebase-ios-sdk" "$PKG/Package.swift"; then
 fi
 echo "   stripped firebase-ios-sdk dependency + FirebaseCrashlytics product"
 
+# 1b. Relax Swift language mode v6 -> v5. Upstream master trips the runner's newest-Xcode Swift 6
+#     region-isolation checks ("sending 'x' risks data races") in files we don't touch; v5 mode
+#     downgrades those to warnings (the code is the same one shipping on the App Store). Applies
+#     to all targets that declare it.
+perl -0pi -e 's/\.swiftLanguageMode\(\.v6\)/.swiftLanguageMode(.v5)/g' "$PKG/Package.swift"
+echo "   relaxed swiftLanguageMode .v6 -> .v5"
+
 # 2. Replace CrashlyticsLogger with the Firebase-free os.Logger stub (same public API).
 cp "$FORK/CrashlyticsLogger.swift" "$PKG/Sources/SmartTubeIOS/Services/CrashlyticsLogger.swift"
 echo "   replaced CrashlyticsLogger.swift with os.Logger stub"
