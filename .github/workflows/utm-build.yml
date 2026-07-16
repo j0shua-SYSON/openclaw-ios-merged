@@ -87,13 +87,68 @@ jobs:
           if [ -n "$FW" ]; then
             ls -la "$FW" | head -30
             file "$FW/UTM" 2>/dev/null || true
-            mkdir -p ../out && tar czf ../out/UTM.framework.tgz -C "$(dirname "$FW")" UTM.framework
           fi
 
-      - name: Upload UTM.framework
-        if: always()
+      # M4 inventory: report exactly what UTM.framework needs at runtime, so the OpenClaw
+      # project.yml embed list (Vendor/UTMPrebuilt/**) can be assembled precisely. Only runs
+      # on a successful build.
+      - name: Inventory runtime dependencies (M4)
+        if: success()
+        run: |
+          cd utm
+          PROD=build/Build/Products/Release-iphoneos
+          echo "=== Products dir ($PROD) ==="
+          ls -la "$PROD" 2>/dev/null || true
+          echo
+          echo "=== *.framework built by the scheme ==="
+          find "$PROD" -maxdepth 1 -name "*.framework" -type d 2>/dev/null | sed 's#.*/##' | sort || true
+          echo
+          echo "=== otool -L UTM.framework/UTM (its LC_LOAD_DYLIBs) ==="
+          otool -L "$PROD/UTM.framework/UTM" 2>/dev/null || true
+          echo
+          for f in $(find "$PROD" -maxdepth 1 -name "*.framework" -type d 2>/dev/null); do
+            b="$f/$(basename "$f" .framework)"
+            [ -f "$b" ] || continue
+            echo "=== otool -L $(basename "$f")/$(basename "$b") ==="
+            otool -L "$b" 2>/dev/null | grep -vE "/usr/lib|/System/" || true
+            echo
+          done
+          echo "=== sysroot dylibs (sysroot-ios-tci-arm64/lib/*.dylib) ==="
+          ls -la sysroot-ios-tci-arm64/lib/*.dylib 2>/dev/null | awk '{print $5, $NF}' | sed 's#.*/##' || true
+          echo "sysroot dylib count: $(find sysroot-ios-tci-arm64/lib -maxdepth 1 -name '*.dylib' 2>/dev/null | wc -l)"
+          echo
+          echo "=== sysroot share/firmware (edk2/seabios/qemu roms) ==="
+          find sysroot-ios-tci-arm64/share -maxdepth 2 -type d 2>/dev/null | head -40 || true
+
+      # Collect the full prebuilt bundle: UTM.framework + every sibling framework the scheme
+      # built + the sysroot's QEMU dylibs and firmware. This becomes Vendor/UTMPrebuilt/ in
+      # OpenClaw. Superset; the exact embed list is refined in project.yml from the inventory.
+      - name: Assemble UTMPrebuilt bundle (M4)
+        if: success()
+        run: |
+          cd utm
+          PROD=build/Build/Products/Release-iphoneos
+          OUT=../out/UTMPrebuilt
+          mkdir -p "$OUT/Frameworks" "$OUT/qemu"
+          # 1. The framework + all sibling frameworks (QEMUKit, CocoaSpiceNoUsb, ...).
+          for f in $(find "$PROD" -maxdepth 1 -name "*.framework" -type d 2>/dev/null); do
+            cp -R "$f" "$OUT/Frameworks/"
+          done
+          # 2. The QEMU runtime dylibs (qemu-system-*, glib, pixman, spice, ...) from sysroot.
+          cp sysroot-ios-tci-arm64/lib/*.dylib "$OUT/qemu/" 2>/dev/null || true
+          # 3. Firmware / ROM resources QEMU loads at runtime.
+          if [ -d sysroot-ios-tci-arm64/share ]; then
+            cp -R sysroot-ios-tci-arm64/share "$OUT/qemu/share"
+          fi
+          echo "=== UTMPrebuilt assembled ==="
+          du -sh "$OUT" 2>/dev/null || true
+          find "$OUT" -maxdepth 2 -name "*.framework" -o -maxdepth 2 -name "*.dylib" | sed 's#.*/out/##' | sort | head -100
+          mkdir -p ../out && tar czf ../out/UTMPrebuilt.tgz -C ../out UTMPrebuilt
+
+      - name: Upload UTMPrebuilt bundle
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: UTM-framework
-          path: out/UTM.framework.tgz
+          name: UTMPrebuilt
+          path: out/UTMPrebuilt.tgz
           if-no-files-found: ignore
