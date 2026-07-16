@@ -21,6 +21,7 @@ on:
       - "Modes/Feather/**"
       - "Modes/iSH/**"
       - "Modes/UTM/**"
+      - "Modes/Yattee/**"
 
 concurrency:
   group: ios-build-${{ github.ref }}
@@ -38,6 +39,8 @@ env:
   ISH_SHA: 997642f3787cc63e65f7134b7bb0362c74bff8e0
   UTM_REPO: https://github.com/utmapp/UTM.git
   UTM_SHA: e4a4c34b671284263fc69f81b607de494d7e9b65
+  YATTEE_REPO: https://github.com/yattee/yattee.git
+  YATTEE_SHA: c0815353
 
 jobs:
   build:
@@ -242,6 +245,60 @@ jobs:
         with:
           path: Vendor/iSHPrebuilt
           key: ish-fw-v1-${{ env.ISH_SHA }}-${{ hashFiles('Modes/iSH/fork/**') }}
+
+      # Yattee mode — the forked Yattee iOS app layer as Yattee.framework (Modes/Yattee/fork).
+      # Needs no dep-assembly step (unlike UTM): MPVKit/mpv/ffmpeg, SDWebImage, Siesta and
+      # Defaults all link statically, leaving libswift_Concurrency (weak, system) as the only
+      # @rpath dep. The Core Data model (Yattee.momd) and *.lproj translations ride inside the
+      # framework. Cached on the Yattee SHA + fork scripts.
+      - name: Restore Yattee framework cache
+        id: yattee-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Vendor/YatteePrebuilt
+          key: yattee-fw-v1-${{ env.YATTEE_SHA }}-${{ hashFiles('Modes/Yattee/fork/**') }}
+
+      - name: Build Yattee framework
+        if: steps.yattee-cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$YATTEE_REPO" yattee
+          cd yattee && git checkout "$YATTEE_SHA" && cd ..
+          sudo gem install xcodeproj --no-document
+          chmod +x Modes/Yattee/fork/apply_fork.sh
+          bash Modes/Yattee/fork/apply_fork.sh "$PWD/yattee" "$PWD/Modes/Yattee/fork"
+          cd yattee
+          set -o pipefail
+          xcodebuild build \
+            -project Yattee.xcodeproj \
+            -scheme "Yattee (iOS)" \
+            -sdk iphoneos -arch arm64 \
+            -configuration Release \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: " || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::Yattee build failed"; exit 1; }
+          cd ..
+          FW=$(find yattee/build/Build/Products -type d -name "Yattee.framework" | grep -iv EagerLinking | while read d; do [ -f "$d/Yattee" ] && echo "$d"; done | head -1)
+          [ -n "$FW" ] || { echo "::error::Yattee.framework (with binary) not found"; exit 1; }
+          mkdir -p Vendor/YatteePrebuilt
+          cp -RL "$FW" Vendor/YatteePrebuilt/
+          # The Core Data model must be inside the framework — PersistenceController fatalErrors
+          # without it, and Bundle.main (OpenClaw) has no copy to fall back on.
+          [ -d Vendor/YatteePrebuilt/Yattee.framework/Yattee.momd ] \
+            || { echo "::error::Yattee.momd missing from framework — Core Data would fatalError at runtime"; exit 1; }
+          rm -rf yattee
+          echo "--- Vendor/YatteePrebuilt/Yattee.framework ---"; ls Vendor/YatteePrebuilt/Yattee.framework | head
+
+      - name: Save Yattee framework cache
+        if: steps.yattee-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Vendor/YatteePrebuilt
+          key: yattee-fw-v1-${{ env.YATTEE_SHA }}-${{ hashFiles('Modes/Yattee/fork/**') }}
 
       # UTM SE mode — the forked UTM iOS-SE app layer as UTM.framework (Modes/UTM/fork),
       # built against our prebuilt ios-tci sysroot. UTM.framework is a monolith (statically

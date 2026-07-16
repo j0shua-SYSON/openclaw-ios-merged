@@ -44,3 +44,13 @@
 @interface UTMLauncher : NSObject
 + (UIViewController * _Nonnull)makeRootViewController;
 @end
+
+// Yattee mode — same forward-declared pattern. YatteeLauncher is an @objc(YatteeLauncher) Swift
+// class inside Yattee.framework; forward-declaring it (not `import Yattee`) keeps OpenClaw's Swift
+// from loading Yattee's module graph (MPVKit, SDWebImage, Siesta, Defaults, …). The class is
+// resolved from the embedded Yattee.framework at link time. makeRootViewController runs Yattee's
+// startup configuration (image pipeline, account/instance setup) then presents its real SwiftUI
+// UI (ContentView). See Modes/Yattee/fork/YatteeLauncher.swift.
+@interface YatteeLauncher : NSObject
++ (UIViewController * _Nonnull)makeRootViewController;
+@end

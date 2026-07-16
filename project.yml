@@ -164,6 +164,15 @@ targets:
       # by CI. UTM.framework's @executable_path/Frameworks rpath finds the deps at runtime.
       - framework: Vendor/UTMPrebuilt/Frameworks/UTM.framework
         embed: true
+      # Yattee mode — the forked Yattee iOS app layer as Yattee.framework (Modes/Yattee/fork).
+      # OpenClaw LINKS it (bridging header forward-declares YatteeLauncher, resolved at link time
+      # via the ObjC runtime) and embeds it. Unlike UTM this needs no dep-copying step: its only
+      # @rpath dep is libswift_Concurrency (a weak system dylib) — MPVKit/mpv/ffmpeg, SDWebImage,
+      # Siesta and Defaults all link statically into the one binary. Core Data model + the *.lproj
+      # translations ship inside it (the fork points both lookups at the framework bundle, since
+      # Bundle.main is OpenClaw once embedded). Built into Vendor/YatteePrebuilt by CI.
+      - framework: Vendor/YatteePrebuilt/Yattee.framework
+        embed: true
       # SmartTube (YouTube) mode — vendored Swift package (Vendor/SmartTube). OpenClaw imports
       # both products (SmartTubeLauncher.swift builds RootView's environment). After the Firebase
       # strip its only transitive dep is the Foundation-based SmartTubeIOSCore, so importing is

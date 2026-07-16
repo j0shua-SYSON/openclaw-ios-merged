@@ -32,6 +32,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "feather", title: "Feather", subtitle: "On-device app signing & install", systemImage: "signature"),
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
         AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
+        AppMode(id: "yattee", title: "Yattee", subtitle: "YouTube via Invidious · native player", systemImage: "play.circle.fill"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
 }
@@ -313,6 +314,22 @@ struct SmartTubeModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts Yattee's real SwiftUI UI (ContentView) inside the mode overlay. YatteeLauncher runs
+/// Yattee's startup work (image pipeline, account/instance configuration) and seeds a default
+/// Invidious instance on first run before returning the hosting VC. `Yattee.framework` is the
+/// forked Yattee iOS app layer (Modes/Yattee/fork); unlike UTM it statically links every
+/// dependency (MPVKit/mpv/ffmpeg, SDWebImage, Siesta), so nothing else needs embedding.
+///
+/// Yattee plays YouTube only through an Invidious/Piped instance — it has no direct-YouTube
+/// path. If the seeded instance stops serving, add a live one in Settings ▸ Locations.
+struct YatteeModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        YatteeLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -344,6 +361,10 @@ struct ModeContainerView: View {
         case "smarttube":
             // SmartTube (YouTube client). Same gesture returns to OpenClaw.
             SmartTubeModeView()
+                .ignoresSafeArea()
+        case "yattee":
+            // Real Yattee (YouTube via Invidious). Same gesture returns to OpenClaw.
+            YatteeModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody
