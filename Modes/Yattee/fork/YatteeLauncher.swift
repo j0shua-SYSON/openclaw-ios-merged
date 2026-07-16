@@ -44,6 +44,8 @@ public final class YatteeLauncher: NSObject {
         SDImageCodersManager.shared.addCoder(SDImageAWebPCoder.shared)
         SDWebImageManager.defaultImageCache = PINCache(name: "stream.yattee.app")
 
+        self.seedDefaultInstanceIfNeeded()
+
         // Yattee routes to its startup tab only once the account/instance finishes configuring.
         NotificationCenter.default.addObserver(
             forName: .accountConfigurationComplete,
@@ -77,6 +79,35 @@ public final class YatteeLauncher: NSObject {
 
         DispatchQueue.global(qos: .userInitiated).async {
             URLBookmarkModel.shared.refreshAll()
+        }
+    }
+
+    /// Yattee ships no default video source: `instancesManifest` is empty, so the "public
+    /// instances by country" picker has nothing to load, and `presentingWelcomeScreen` is never
+    /// set true anywhere in the codebase — so the onboarding sheet never appears and a first
+    /// launch is a blank shell until an instance is added by hand in Settings ▸ Locations.
+    /// Seed one so the mode is usable out of the box. `insert` is idempotent (it matches on API
+    /// URL), so this won't duplicate across launches, and the user can freely add/remove/switch
+    /// instances in Settings afterwards.
+    ///
+    /// NOTE: public Invidious instances are largely blocked by YouTube — at the time of writing
+    /// this was the only public one still serving HTTPS with its API enabled. If it dies, add a
+    /// live one (or a self-hosted instance) in Settings ▸ Locations.
+    @MainActor
+    private static func seedDefaultInstanceIfNeeded() {
+        guard Defaults[.instances].isEmpty else { return }
+
+        let instance = InstancesModel.shared.insert(
+            app: .invidious,
+            name: "Invidious",
+            url: "https://inv.zoomerville.com"
+        )
+
+        // Make it the active source, otherwise AccountsModel.current stays nil and the UI is empty.
+        // (configureAccount() below would also pick this up via `all.first?.anonymousAccount`, but
+        // set it explicitly so the ordering isn't load-bearing.)
+        if AccountsModel.shared.current.isNil {
+            AccountsModel.shared.setCurrent(instance.anonymousAccount)
         }
     }
 }
