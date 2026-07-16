@@ -1,0 +1,73 @@
+name: UTM sysroot inspect (one-off)
+
+# Lightweight, no-Xcode probe of our prebuilt UTM sysroot: does it already ship
+# wrapped .framework bundles or only loose lib/*.dylib? what are the dylib install
+# names? are the deps ASan-instrumented? how big is share/ by subdir? Answers the M4
+# packaging questions empirically. Manual dispatch only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Download + extract sysroot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release download utm-sysroot --repo "${{ github.repository }}" --pattern sysroot.tgz --dir .
+          tar -xzf sysroot.tgz && rm sysroot.tgz
+          ls -d sysroot-ios-tci-arm64
+
+      - name: Inspect layout
+        run: |
+          cd sysroot-ios-tci-arm64
+          echo "=== top-level ==="
+          ls -la
+          echo
+          echo "=== is there a Frameworks/ dir? ==="
+          find . -maxdepth 2 -name "*.framework" -type d 2>/dev/null | head -40 || true
+          echo "framework count (maxdepth 3): $(find . -maxdepth 3 -name '*.framework' -type d 2>/dev/null | wc -l)"
+          echo
+          echo "=== lib/ contents (first 60) ==="
+          ls -la lib 2>/dev/null | head -60 || true
+          echo "lib dylib count: $(find lib -maxdepth 1 -name '*.dylib' 2>/dev/null | wc -l)"
+          echo
+          echo "=== qemu-*-softmmu present? (where are the emulators?) ==="
+          find . -maxdepth 3 -name "*qemu*softmmu*" 2>/dev/null | head -40 || true
+          find . -maxdepth 3 -name "qemu-system-*" 2>/dev/null | head -40 || true
+
+      - name: Install names + ASan check
+        run: |
+          cd sysroot-ios-tci-arm64
+          for d in lib/libglib-2.0.0.dylib lib/libspice-server.1.dylib lib/libpixman-1.0.dylib; do
+            [ -f "$d" ] || d=$(find . -name "$(basename "$d")" 2>/dev/null | head -1)
+            [ -f "$d" ] || continue
+            echo "=== $d ==="
+            echo "-- install name (otool -D) --"; otool -D "$d" 2>/dev/null || true
+            echo "-- asan runtime referenced? --"; otool -L "$d" 2>/dev/null | grep -i "asan\|clang_rt" || echo "  (no asan runtime dep)"
+            echo
+          done
+          echo "=== any dylib referencing asan runtime? ==="
+          FOUND=0
+          for f in $(find lib -maxdepth 1 -name '*.dylib' 2>/dev/null | head -400); do
+            if otool -L "$f" 2>/dev/null | grep -qi "asan_ios"; then echo "ASAN: $f"; FOUND=1; fi
+          done
+          [ "$FOUND" = 0 ] && echo "  none of the sysroot dylibs reference the asan runtime (=> asan is UTM's build only)"
+
+      - name: share/ size breakdown
+        run: |
+          cd sysroot-ios-tci-arm64
+          if [ -d share ]; then
+            echo "=== du -sh share/* ==="
+            du -sh share/* 2>/dev/null | sort -h || true
+            echo "=== firmware-ish dirs ==="
+            find share -maxdepth 2 -type d 2>/dev/null | grep -iE "qemu|edk2|seabios|vgabios|firmware|bios|keymaps|roms" | head -40 || true
+          else
+            echo "no share/ dir"
+          fi
+          echo "=== total sysroot size ==="
+          du -sh . 2>/dev/null || true
