@@ -434,6 +434,15 @@ final class TOSPlayerViewModel: NSObject {
         eval("pause", "(function(){var v=document.querySelector('video');var ifr=document.querySelectorAll('iframe').length;if(v){v.pause();}return {found: !!v, iframes: ifr, paused: v ? v.paused : null};})();")
     }
 
+    /// OpenClaw: play/pause state + toggle for the native controls overlay's button. The overlay
+    /// now consumes taps over the video (so a tap reveals controls instead of hitting YouTube's
+    /// own tap-to-pause), which means pausing has to be driven explicitly through the JS bridge.
+    var isPlaying: Bool { playerState == .playing || playerState == .buffering }
+
+    func togglePlayPause() {
+        if isPlaying { pause() } else { play() }
+    }
+
     func seekTo(_ seconds: Double) {
         eval("seekTo(\(seconds))", "(function(){var v=document.querySelector('video');var ifr=document.querySelectorAll('iframe').length;if(v){v.currentTime=\(seconds);}return {found: !!v, iframes: ifr, currentTime: v ? v.currentTime : null};})();")
     }

@@ -169,6 +169,29 @@ public struct TOSPlayerView: View {
                 YouTubeWebPlayerView(webView: vm.webView)
                     .ignoresSafeArea()
 
+                #if os(iOS)
+                // MARK: Tap-to-reveal-controls layer (OpenClaw)
+                // A tap must reveal the controls WITHOUT pausing. TOSSwipeNavigationOverlay
+                // can't do that: it's a PassthroughGestureView (hitTest -> nil) whose recognizers
+                // are re-homed onto the window with cancelsTouchesInView = false, so it only
+                // observes — the WKWebView still wins the hit test and YouTube's embed toggles
+                // play/pause on the same touch. (The old #111 attempt tried to *undo* that pause
+                // afterwards and misfired, because a hidden-controls tap is legitimately used both
+                // to reveal controls and to pause.) This is a real hit-test target, so the embed
+                // never sees the touch at all — deterministic, no state guessing.
+                // Scoped to the top 75% (mirrors the swipe overlay's verticalActivationFraction)
+                // so YouTube's own bottom scrubber/control bar stays tappable exactly as before.
+                // Pause is now driven explicitly by centerPlayPauseButton via the JS bridge.
+                VStack(spacing: 0) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { showControls() }
+                        .frame(height: geo.size.height * 0.75)
+                    Spacer(minLength: 0)
+                }
+                .ignoresSafeArea()
+                #endif
+
                 #if os(macOS)
                 // MARK: Top-right control cluster — more menu (like/dislike, sleep
                 // timer, share) + playback speed picker. See topRightControls for why
@@ -210,6 +233,13 @@ public struct TOSPlayerView: View {
                 backButton(vm: vm)
                     .opacity(controlsVisible ? 1 : 0)
                     .allowsHitTesting(controlsVisible)
+
+                #if os(iOS)
+                // Pause/play now that the tap layer above no longer forwards taps to the embed.
+                centerPlayPauseButton(vm: vm)
+                    .opacity(controlsVisible ? 1 : 0)
+                    .allowsHitTesting(controlsVisible)
+                #endif
                 #endif
 
                 // MARK: SponsorBlock skip toast (bottom-centre)
@@ -385,6 +415,26 @@ public struct TOSPlayerView: View {
     // and pushes the button ~60pt further down than intended, into the row
     // where the IFrame player's own channel-info overlay sits — which is the
     // "back button is too low and doesn't work" regression reported on-device.
+    #if os(iOS)
+    /// Center play/pause (OpenClaw). The tap-to-reveal layer stops taps from reaching YouTube's
+    /// embed, so pausing is driven explicitly here through the view model's JS bridge. Shown only
+    /// while the controls are visible; tapping it also restarts the auto-hide timer.
+    private func centerPlayPauseButton(vm: TOSPlayerViewModel) -> some View {
+        Button {
+            vm.togglePlayPause()
+            showControls()
+        } label: {
+            Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
+                .font(.system(size: 42))
+                .foregroundStyle(.white)
+                .padding(20)
+                .background(.black.opacity(0.35), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tosPlayer.playPauseButton")
+    }
+    #endif
+
     private func backButton(vm: TOSPlayerViewModel) -> some View {
         VStack {
             // Tighter spacing/padding than usual (4pt gaps, 9pt circle padding) —
