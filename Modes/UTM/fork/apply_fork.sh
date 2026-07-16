@@ -55,6 +55,21 @@ for f in \
   perl -0pi -e 's/\@objc (?!(public|private|fileprivate|internal|open|@))/\@objc public /g' "$CLONE/$f"
   perl -0pi -e 's/(\@objc\([^)]*\)\r?\n\s*)(?!public |private |internal |fileprivate |open )(static |class |func |var |let |dynamic )/${1}public ${2}/g' "$CLONE/$f"
 done
+
+# 2c. Bounded protocol-conformance cascade. UTMQemuPort is an @objc NSObject subclass ObjC
+#     references, so 2b makes the class public — but its members that satisfy the *public*
+#     protocols QEMUPort / CSPortDelegate (readDataHandler, errorHandler, disconnectHandler,
+#     isOpen, write, and the three CSPortDelegate port(...) methods) are neither @objc nor
+#     access-keyworded, so they stay internal and Swift errors "must be declared public
+#     because it matches a requirement in public protocol". They all sit at member-level
+#     (4-space) indentation; the private stored props already carry `private`, so promote
+#     every bare 4-space `var`/`func` in just this file. Closures are indented deeper (8+),
+#     @objc init is handled by 2b — so this hits exactly the 8 conformance members.
+QP="$CLONE/Services/UTMQemuPort.swift"
+if [ -f "$QP" ]; then
+  perl -0pi -e 's/^(    )(?!private|public|internal|fileprivate|open|\@)(var |func )/${1}public ${2}/mg' "$QP"
+  echo "   promoted UTMQemuPort QEMUPort/CSPortDelegate conformance members to public"
+fi
 echo "   framework-style UTM-Swift.h import + targeted public @objc interop symbols"
 
 # 3. Convert the iOS-SE app target -> UTM.framework.
