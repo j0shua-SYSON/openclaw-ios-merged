@@ -120,30 +120,50 @@ jobs:
           echo "=== sysroot share/firmware (edk2/seabios/qemu roms) ==="
           find sysroot-ios-tci-arm64/share -maxdepth 2 -type d 2>/dev/null | head -40 || true
 
-      # Collect the full prebuilt bundle: UTM.framework + every sibling framework the scheme
-      # built + the sysroot's QEMU dylibs and firmware. This becomes Vendor/UTMPrebuilt/ in
-      # OpenClaw. Superset; the exact embed list is refined in project.yml from the inventory.
+      # Confirm the asan runtime dep is gone after ENABLE_ADDRESS_SANITIZER=NO.
+      - name: Verify UTM.framework is not ASan-instrumented
+        if: success()
+        run: |
+          cd utm
+          BIN=build/Build/Products/Release-iphoneos/UTM.framework/UTM
+          if otool -L "$BIN" 2>/dev/null | grep -qi "asan_ios"; then
+            echo "::error::UTM.framework still links the ASan runtime"; otool -L "$BIN" | grep -i asan; exit 1
+          fi
+          echo "OK: no asan runtime dependency"
+
+      # Assemble the prebuilt bundle for OpenClaw. The sysroot already ships its runtime deps
+      # PRE-WRAPPED as .framework bundles under Frameworks/ (64 of them: glib, gst*, spice,
+      # pixman, qemu-<arch>-softmmu, qemu-img, MoltenVK, vulkan, swtpm, ...) — no dylib
+      # wrapping needed; lib/*.dylib are link-time only. Runtime resources come from
+      # share/qemu (firmware, keymaps, ROMs). Docs/man/locale are dropped to trim size.
       - name: Assemble UTMPrebuilt bundle (M4)
         if: success()
         run: |
           cd utm
           PROD=build/Build/Products/Release-iphoneos
+          SYS=sysroot-ios-tci-arm64
           OUT=../out/UTMPrebuilt
-          mkdir -p "$OUT/Frameworks" "$OUT/qemu"
-          # 1. The framework + all sibling frameworks (QEMUKit, CocoaSpiceNoUsb, ...).
-          for f in $(find "$PROD" -maxdepth 1 -name "*.framework" -type d 2>/dev/null); do
-            cp -R "$f" "$OUT/Frameworks/"
+          mkdir -p "$OUT/Frameworks"
+          # 1. UTM.framework itself + the 3 SPM resource bundles it needs at runtime.
+          cp -R "$PROD/UTM.framework" "$OUT/Frameworks/"
+          for b in CocoaSpice_CocoaSpiceRenderer InAppSettingsKit_InAppSettingsKit ZIPFoundation_ZIPFoundation; do
+            [ -d "$PROD/$b.bundle" ] && cp -R "$PROD/$b.bundle" "$OUT/Frameworks/UTM.framework/$b.bundle" || true
           done
-          # 2. The QEMU runtime dylibs (qemu-system-*, glib, pixman, spice, ...) from sysroot.
-          cp sysroot-ios-tci-arm64/lib/*.dylib "$OUT/qemu/" 2>/dev/null || true
-          # 3. Firmware / ROM resources QEMU loads at runtime.
-          if [ -d sysroot-ios-tci-arm64/share ]; then
-            cp -R sysroot-ios-tci-arm64/share "$OUT/qemu/share"
-          fi
+          # 2. The 64 pre-wrapped dependency frameworks from the sysroot.
+          cp -R "$SYS/Frameworks/." "$OUT/Frameworks/"
+          # 3. QEMU runtime resources (firmware/keymaps/ROMs). Trim dev docs + locale.
+          mkdir -p "$OUT/qemu-resources"
+          cp -R "$SYS/share/qemu" "$OUT/qemu-resources/qemu"
+          for d in glib-2.0 vulkan drirc.d gstreamer-1.0 gst-plugins-base; do
+            [ -d "$SYS/share/$d" ] && cp -R "$SYS/share/$d" "$OUT/qemu-resources/$d" || true
+          done
           echo "=== UTMPrebuilt assembled ==="
-          du -sh "$OUT" 2>/dev/null || true
-          find "$OUT" -maxdepth 2 -name "*.framework" -o -maxdepth 2 -name "*.dylib" | sed 's#.*/out/##' | sort | head -100
-          mkdir -p ../out && tar czf ../out/UTMPrebuilt.tgz -C ../out UTMPrebuilt
+          echo "-- total --"; du -sh "$OUT" 2>/dev/null || true
+          echo "-- Frameworks (count=$(find "$OUT/Frameworks" -maxdepth 1 -name '*.framework' | wc -l)) --"
+          find "$OUT/Frameworks" -maxdepth 1 -name "*.framework" | sed 's#.*/##' | sort
+          echo "-- qemu-resources --"; du -sh "$OUT/qemu-resources"/* 2>/dev/null || true
+          tar czf ../out/UTMPrebuilt.tgz -C ../out UTMPrebuilt
+          echo "-- tarball --"; ls -lh ../out/UTMPrebuilt.tgz
 
       - name: Upload UTMPrebuilt bundle
         if: success()

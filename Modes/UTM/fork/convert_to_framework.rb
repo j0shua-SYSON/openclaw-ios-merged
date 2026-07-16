@@ -40,6 +40,14 @@ target.build_configurations.each do |config|
   s['MACH_O_TYPE'] = 'mh_dylib'
   s['DEFINES_MODULE'] = 'YES'
   s['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+  # UTM's iOS-SE Release config ships AddressSanitizer on (build intermediates land in
+  # Objects-normal-asan; the framework picks up an @rpath/libclang_rt.asan_ios_dynamic.dylib
+  # LC_LOAD_DYLIB). The prebuilt sysroot dylibs are NOT asan-instrumented (verified), so asan
+  # here is pure overhead — it drags the sanitizer runtime and bloats the binary. Force it off
+  # for the embedded release framework.
+  s['ENABLE_ADDRESS_SANITIZER'] = 'NO'
+  s['CLANG_ADDRESS_SANITIZER'] = 'NO'
   s['SKIP_INSTALL'] = 'NO'
   s['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
   s['INFOPLIST_FILE'] = 'UTMMode-Info.plist'
