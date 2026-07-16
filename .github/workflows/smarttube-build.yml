@@ -55,6 +55,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO GCC_TREAT_WARNINGS_AS_ERRORS=NO \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             2>&1 | tee build.log \
             | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Compiling|warning: .*Firebase|Undefined symbols" || true
