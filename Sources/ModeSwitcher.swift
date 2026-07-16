@@ -286,6 +286,18 @@ struct ISHModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts UTM SE's real SwiftUI VM-list UI (UTMSingleWindowView) inside the mode overlay.
+/// UTMLauncher applies UTM's runtime patches + registers Settings.bundle defaults before
+/// returning the hosting VC. `UTM.framework` is the forked UTM iOS-SE app layer (QEMU
+/// TCTI, JIT-less); see Modes/UTM/fork. VM storage is isolated to Documents/UTM.
+struct UTMModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        UTMLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -307,6 +319,10 @@ struct ModeContainerView: View {
         case "ish":
             // Real iSH (x86 Linux shell). Same gesture returns to OpenClaw.
             ISHModeView()
+                .ignoresSafeArea()
+        case "utm":
+            // Real UTM SE (JIT-less QEMU VMs). Same gesture returns to OpenClaw.
+            UTMModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody

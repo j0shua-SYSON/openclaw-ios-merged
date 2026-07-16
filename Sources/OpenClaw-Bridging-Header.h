@@ -34,3 +34,13 @@
 @interface iSHLauncher : NSObject
 + (UIViewController * _Nonnull)makeRootViewController;
 @end
+
+// UTM SE mode — same forward-declared pattern. UTMLauncher is an @objc(UTMLauncher) Swift
+// class inside UTM.framework; forward-declaring it (not `import UTM`) keeps OpenClaw's Swift
+// from loading UTM's large transitive module graph (QEMUKit, CocoaSpice, the SwiftUI VM
+// machinery). The class is resolved from the embedded UTM.framework at link time.
+// makeRootViewController applies UTM's runtime patches, then presents UTM's SwiftUI VM-list
+// UI (UTMSingleWindowView). See Modes/UTM/fork/UTMLauncher.swift.
+@interface UTMLauncher : NSObject
++ (UIViewController * _Nonnull)makeRootViewController;
+@end
