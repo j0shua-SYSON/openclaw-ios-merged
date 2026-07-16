@@ -7,6 +7,10 @@ name: UTM sysroot inspect (one-off)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [utm-mode]
+    paths:
+      - ".github/workflows/utm-sysroot-inspect.yml"
 
 jobs:
   inspect:
