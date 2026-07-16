@@ -30,7 +30,11 @@ public final class SettingsStore {
     /// mini player, PIP, DASH switching, etc.) opt out via
     /// `--uitesting-disable-tos-player-on-ios`. Has no effect on macOS or tvOS —
     /// PlayerRouter (the only reader) is `#if os(iOS)`.
-    public var useTOSPlayerOnIOS: Bool = true
+    // OpenClaw embed: default to the NATIVE AVPlayer pipeline instead of the WKWebView-based
+    // YouTube IFrame ("TOS") player. The TOS embed exists for App Store compliance (it's what
+    // surfaces the example.com embed origin during playback); sideloaded in OpenClaw we want the
+    // native, ad-free player and no visible web view. po_token is still solved off-screen.
+    public var useTOSPlayerOnIOS: Bool = false
 
     private static let key = "smarttube_app_settings"
 
