@@ -1,0 +1,84 @@
+name: Yattee build (framework)
+
+# Stage-A for the Yattee (YouTube) mode: clone yattee/yattee, apply the fork (iOS app target ->
+# Yattee.framework, neutralize @main, fix the Core Data + localization Bundle.main lookups, default
+# the player backend to AVPlayer), and build Yattee.framework for iOS device. Also reports the size
+# of MPVKit's xcframework, which decides whether MPV can stay linked.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [utm-mode]
+    paths:
+      - "Modes/Yattee/fork/**"
+      - ".github/workflows/yattee-build.yml"
+
+env:
+  YATTEE_REPO: https://github.com/yattee/yattee.git
+  YATTEE_SHA: c0815353
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout OpenClaw (fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
+      - name: Select newest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$LATEST" ] && sudo xcode-select -s "$LATEST" || true
+          xcodebuild -version
+
+      - name: Clone Yattee
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$YATTEE_REPO" yattee
+          cd yattee && git checkout "$YATTEE_SHA"
+
+      - name: Apply OpenClaw Yattee fork
+        run: |
+          set -e
+          sudo gem install xcodeproj --no-document
+          chmod +x openclaw/Modes/Yattee/fork/apply_fork.sh
+          bash openclaw/Modes/Yattee/fork/apply_fork.sh "$PWD/yattee" "$PWD/openclaw/Modes/Yattee/fork"
+
+      - name: Build Yattee.framework (arm64 device)
+        run: |
+          cd yattee
+          set -o pipefail
+          xcodebuild build \
+            -project Yattee.xcodeproj \
+            -scheme "Yattee (iOS)" \
+            -sdk iphoneos -arch arm64 \
+            -configuration Release \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: " || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::Yattee.framework build failed"; exit 1; }
+
+      - name: Diagnostics + MPVKit size (always)
+        if: always()
+        run: |
+          cd yattee
+          echo "=== errors ==="; grep -E "error:" build.log 2>/dev/null | head -40 || true
+          FW=$(find build/Build/Products -type d -name "Yattee.framework" 2>/dev/null | grep -iv EagerLinking | head -1)
+          echo "framework: $FW"
+          if [ -n "$FW" ]; then
+            file "$FW/Yattee" 2>/dev/null || true
+            du -sh "$FW" 2>/dev/null || true
+            echo "=== does it carry the Core Data model? ==="
+            find "$FW" -name "*.momd" -o -name "*.mom" 2>/dev/null | head || echo "NO .momd in framework"
+            echo "=== @rpath deps (what must be embedded) ==="
+            otool -L "$FW/Yattee" 2>/dev/null | grep "@rpath" | head -20 || true
+          fi
+          echo "=== MPVKit xcframework size (decides if MPV can stay linked) ==="
+          find ~/Library/Developer/Xcode/DerivedData build -iname "*.xcframework" -maxdepth 8 2>/dev/null | head -5
+          find build -ipath "*MPVKit*" -name "*.framework" -maxdepth 8 2>/dev/null | head -5 | while read f; do du -sh "$f"; done || true
