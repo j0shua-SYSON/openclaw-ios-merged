@@ -15,6 +15,7 @@ on:
       - "Modes/Delta/**"
       - "Modes/Feather/**"
       - "Modes/iSH/**"
+      - "Modes/UTM/**"
 
 concurrency:
   group: ios-build-${{ github.ref }}
@@ -30,6 +31,8 @@ env:
   FEATHER_SHA: 82a0087b28da3db5665c0a1e255acfe0151c4caa
   ISH_REPO: https://github.com/ish-app/ish.git
   ISH_SHA: 997642f3787cc63e65f7134b7bb0362c74bff8e0
+  UTM_REPO: https://github.com/utmapp/UTM.git
+  UTM_SHA: e4a4c34b671284263fc69f81b607de494d7e9b65
 
 jobs:
   build:
@@ -235,6 +238,75 @@ jobs:
           path: Vendor/iSHPrebuilt
           key: ish-fw-v1-${{ env.ISH_SHA }}-${{ hashFiles('Modes/iSH/fork/**') }}
 
+      # UTM SE mode — the forked UTM iOS-SE app layer as UTM.framework (Modes/UTM/fork),
+      # built against our prebuilt ios-tci sysroot. UTM.framework is a monolith (statically
+      # links QEMUKit/CocoaSpice + all SPM deps). Its ~63 @rpath deps (glib, gst*, spice,
+      # pixman, qemu-<arch>-softmmu, MoltenVK, …) ship PRE-WRAPPED as frameworks in the
+      # sysroot's Frameworks/; QEMU firmware/ROMs are share/qemu. Assembled into
+      # Vendor/UTMPrebuilt/{Frameworks,Resources}. Cached on the UTM SHA + fork scripts.
+      - name: Restore UTM prebuilt cache
+        id: utm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Vendor/UTMPrebuilt
+          key: utm-fw-v2-${{ env.UTM_SHA }}-${{ hashFiles('Modes/UTM/fork/**') }}
+
+      - name: Build UTM.framework + assemble prebuilt
+        if: steps.utm-cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$UTM_REPO" utm
+          cd utm
+          git checkout "$UTM_SHA"
+          git submodule sync --recursive
+          git -c protocol.version=2 submodule update --init --recursive --jobs 4 || true
+          cd ..
+          # Prebuilt ios-tci sysroot (already contains Frameworks/ + share/qemu + share/vulkan).
+          gh release download utm-sysroot --repo "${{ github.repository }}" --pattern sysroot.tgz --dir utm
+          (cd utm && tar -xzf sysroot.tgz && rm sysroot.tgz && ls -d sysroot-ios-tci-arm64 >/dev/null)
+          sudo gem install xcodeproj --no-document
+          chmod +x Modes/UTM/fork/apply_fork.sh
+          bash Modes/UTM/fork/apply_fork.sh "$PWD/utm" "$PWD/Modes/UTM/fork"
+          cd utm
+          set -o pipefail
+          xcodebuild build \
+            -project UTM.xcodeproj -scheme iOS-SE \
+            -sdk iphoneos -arch arm64 -configuration Release \
+            -derivedDataPath build -enableAddressSanitizer NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Undefined symbols|ld: " || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::UTM.framework build failed"; exit 1; }
+          BIN=build/Build/Products/Release-iphoneos/UTM.framework/UTM
+          if otool -L "$BIN" | grep -qi asan_ios; then echo "::error::UTM.framework is ASan-instrumented"; exit 1; fi
+          cd ..
+          # Assemble Vendor/UTMPrebuilt. Frameworks/ = UTM.framework (+ its 3 SPM resource
+          # bundles) + the pre-wrapped dep frameworks. Resources/ = QEMU firmware + vulkan ICDs,
+          # which UTM reads from Bundle.main (= OpenClaw.app root once embedded).
+          PROD=utm/build/Build/Products/Release-iphoneos
+          SYS=utm/sysroot-ios-tci-arm64
+          rm -rf Vendor/UTMPrebuilt
+          mkdir -p Vendor/UTMPrebuilt/Frameworks Vendor/UTMPrebuilt/Resources
+          cp -R "$PROD/UTM.framework" Vendor/UTMPrebuilt/Frameworks/
+          for b in CocoaSpice_CocoaSpiceRenderer InAppSettingsKit_InAppSettingsKit ZIPFoundation_ZIPFoundation; do
+            [ -d "$PROD/$b.bundle" ] && cp -R "$PROD/$b.bundle" "Vendor/UTMPrebuilt/Frameworks/UTM.framework/$b.bundle" || true
+          done
+          cp -R "$SYS/Frameworks/." Vendor/UTMPrebuilt/Frameworks/
+          cp -R "$SYS/share/qemu" Vendor/UTMPrebuilt/Resources/qemu
+          [ -d "$SYS/share/vulkan" ] && cp -R "$SYS/share/vulkan" Vendor/UTMPrebuilt/Resources/vulkan || true
+          rm -rf utm
+          echo "--- Vendor/UTMPrebuilt: $(find Vendor/UTMPrebuilt/Frameworks -maxdepth 1 -name '*.framework' | wc -l) frameworks ---"
+          du -sh Vendor/UTMPrebuilt Vendor/UTMPrebuilt/Resources/qemu 2>/dev/null || true
+
+      - name: Save UTM prebuilt cache
+        if: steps.utm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Vendor/UTMPrebuilt
+          key: utm-fw-v2-${{ env.UTM_SHA }}-${{ hashFiles('Modes/UTM/fork/**') }}
+
       - name: Generate build/Version.xcconfig
         run: |
           set -e
@@ -271,6 +343,35 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
             ENABLE_APP_INTENTS_METADATA_GENERATION=NO
+
+      # UTM SE needs its ~63 runtime dep frameworks and QEMU firmware inside the app bundle.
+      # Xcode embedded UTM.framework itself (project.yml dependency); OpenClaw's code never
+      # references the deps (they're UTM.framework's @rpath loads), so copy them straight into
+      # Frameworks/ here. QEMU firmware + vulkan ICDs go at the bundle ROOT because UTM reads
+      # them from Bundle.main (= this app once embedded). zsign deep-signs everything later.
+      - name: Embed UTM runtime frameworks + resources
+        run: |
+          set -e
+          APP=$(ls -d build/OpenClaw.xcarchive/Products/Applications/*.app | head -1)
+          if [ ! -d Vendor/UTMPrebuilt/Frameworks ]; then echo "::error::Vendor/UTMPrebuilt missing"; exit 1; fi
+          mkdir -p "$APP/Frameworks"
+          n=0
+          for f in Vendor/UTMPrebuilt/Frameworks/*.framework; do
+            name=$(basename "$f")
+            [ "$name" = "UTM.framework" ] && continue   # already embedded by Xcode
+            rm -rf "$APP/Frameworks/$name"
+            cp -R "$f" "$APP/Frameworks/$name"
+            n=$((n+1))
+          done
+          # Firmware/ROMs + vulkan ICDs at bundle root (Bundle.main/qemu, Bundle.main/vulkan).
+          rm -rf "$APP/qemu" "$APP/vulkan"
+          cp -R Vendor/UTMPrebuilt/Resources/qemu "$APP/qemu"
+          [ -d Vendor/UTMPrebuilt/Resources/vulkan ] && cp -R Vendor/UTMPrebuilt/Resources/vulkan "$APP/vulkan" || true
+          echo "Embedded $n UTM dep frameworks + qemu/vulkan resources"
+          echo "::group::UTM.framework @rpath deps present?"
+          otool -L "$APP/Frameworks/UTM.framework/UTM" | grep -E "@rpath.*(qemu|glib|spice|pixman)" | head -5 || true
+          echo "::endgroup::"
+          ls "$APP/Frameworks" | grep -cE "\.framework$" | sed 's/^/frameworks in bundle: /'
 
       - name: Package unsigned IPA
         run: |

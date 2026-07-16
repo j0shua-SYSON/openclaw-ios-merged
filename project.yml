@@ -149,6 +149,16 @@ targets:
       # iSHLauncher, resolved from it at link time). Built into Vendor/iSHPrebuilt by CI.
       - framework: Vendor/iSHPrebuilt/iSH.framework
         embed: true
+      # UTM SE mode — the forked UTM iOS-SE app layer as UTM.framework (Modes/UTM/fork),
+      # a monolith that statically links QEMUKit/CocoaSpice + all SPM deps. OpenClaw LINKS
+      # it (bridging header forward-declares UTMLauncher, resolved at link time via the ObjC
+      # runtime) and embeds it. UTM.framework's ~63 @rpath deps (glib, gst*, spice, pixman,
+      # qemu-<arch>-softmmu, MoltenVK, …) are runtime-only — OpenClaw never references them —
+      # so CI bulk-copies them (+ QEMU firmware) into the app bundle post-archive and zsign
+      # deep-signs them, rather than listing 64 entries here. Built into Vendor/UTMPrebuilt
+      # by CI. UTM.framework's @executable_path/Frameworks rpath finds the deps at runtime.
+      - framework: Vendor/UTMPrebuilt/Frameworks/UTM.framework
+        embed: true
       - package: OpenClawKit
       - package: OpenClawKit
         product: OpenClawChatUI
