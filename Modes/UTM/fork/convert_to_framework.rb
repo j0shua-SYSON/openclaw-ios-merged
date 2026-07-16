@@ -109,13 +109,17 @@ puts '  public header: UTM.h (umbrella)'
   VMKeyboardButton.h VMKeyboardView.h
 ].each { |h| make_public(project, headers_phase, h) }
 
-# 4. Add the UTMLauncher.swift factory (apply_fork.sh copied it into Platform/iOS).
-launcher = project.files.find { |f| f.path && File.basename(f.path) == 'UTMLauncher.swift' }
-launcher ||= project.main_group.new_reference('Platform/iOS/UTMLauncher.swift')
-unless target.source_build_phase.files.any? { |b| b.file_ref == launcher }
-  target.source_build_phase.add_file_reference(launcher)
+# 4. Add the UTMLauncher.swift factory + the UTMOpenClawBundleFix.m embed shim (apply_fork.sh
+#    copied both into Platform/iOS).
+['Platform/iOS/UTMLauncher.swift', 'Platform/iOS/UTMOpenClawBundleFix.m'].each do |rel|
+  base = File.basename(rel)
+  ref = project.files.find { |f| f.path && File.basename(f.path) == base }
+  ref ||= project.main_group.new_reference(rel)
+  unless target.source_build_phase.files.any? { |b| b.file_ref == ref }
+    target.source_build_phase.add_file_reference(ref)
+  end
+  puts "  source: #{base}"
 end
-puts '  source: UTMLauncher.swift'
 
 # 5. Drop the "Embed Libraries" copy phase (dstSubfolderSpec 10 = Frameworks): the ~60
 #    QEMU/dep frameworks ship in OpenClaw's Frameworks/, not nested in UTM.framework.

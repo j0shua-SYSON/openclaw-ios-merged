@@ -133,6 +133,11 @@ jobs:
           else
             echo "OK: no asan runtime dependency"
           fi
+          echo "=== UTM.framework resources (Settings.bundle / Assets.car needed by the embed shim) ==="
+          FW=build/Build/Products/Release-iphoneos/UTM.framework
+          ls -la "$FW" | grep -iE "settings|assets|\.car|\.bundle|\.lproj|Info.plist" || true
+          find "$FW" -maxdepth 2 -iname "Settings.bundle" -o -maxdepth 2 -iname "Assets.car" 2>/dev/null | sed "s#$FW/##" || true
+          echo "Settings.bundle present: $(find "$FW" -iname 'Root.plist' -path '*Settings.bundle*' | head -1 || echo NONE)"
 
       # Assemble the prebuilt bundle for OpenClaw. The sysroot already ships its runtime deps
       # PRE-WRAPPED as .framework bundles under Frameworks/ (64 of them: glib, gst*, spice,

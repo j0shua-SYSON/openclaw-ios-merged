@@ -13,11 +13,13 @@ FORK="$2"                  # e.g. $PWD/openclaw/Modes/UTM/fork
 
 echo "== apply_fork(UTM): clone=$CLONE fork=$FORK =="
 
-# 1. Drop in the launcher, the umbrella (replacing the bridging header), the framework plist.
-cp "$FORK/UTMLauncher.swift"  "$CLONE/Platform/iOS/UTMLauncher.swift"
-cp "$FORK/UTM-umbrella.h"     "$CLONE/UTM.h"
-cp "$FORK/UTMMode-Info.plist" "$CLONE/UTMMode-Info.plist"
-echo "   copied UTMLauncher.swift, UTM/UTM.h (umbrella), UTMMode-Info.plist"
+# 1. Drop in the launcher, the umbrella (replacing the bridging header), the framework plist,
+#    and the embed shim that redirects UTM's Bundle.main resource lookups to the framework.
+cp "$FORK/UTMLauncher.swift"        "$CLONE/Platform/iOS/UTMLauncher.swift"
+cp "$FORK/UTMOpenClawBundleFix.m"   "$CLONE/Platform/iOS/UTMOpenClawBundleFix.m"
+cp "$FORK/UTM-umbrella.h"           "$CLONE/UTM.h"
+cp "$FORK/UTMMode-Info.plist"       "$CLONE/UTMMode-Info.plist"
+echo "   copied UTMLauncher.swift, UTMOpenClawBundleFix.m, UTM/UTM.h (umbrella), UTMMode-Info.plist"
 
 # 2. Neutralize the app entry point — @main is illegal in a framework. Main.main() is
 #    never called (we boot via UTMLauncher). CRLF-safe.
