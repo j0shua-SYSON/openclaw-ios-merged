@@ -1,0 +1,68 @@
+name: SmartTube package build (fork validate)
+
+# Stage-A for the SmartTube (YouTube) mode: clone milika/SmartTubeIOS, strip the
+# FirebaseCrashlytics dependency (fork), and compile the SPM package for iOS device to prove
+# the strip + os.Logger stub build cleanly before wiring the package into OpenClaw.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [utm-mode]
+    paths:
+      - "Modes/SmartTube/fork/**"
+      - ".github/workflows/smarttube-build.yml"
+
+env:
+  SMARTTUBE_REPO: https://github.com/milika/SmartTubeIOS.git
+  SMARTTUBE_SHA: f638021
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout OpenClaw (fork scripts)
+        uses: actions/checkout@v4
+        with:
+          path: openclaw
+
+      - name: Select newest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$LATEST" ] && sudo xcode-select -s "$LATEST" || true
+          xcodebuild -version
+
+      - name: Clone SmartTubeIOS
+        run: |
+          set -e
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone "$SMARTTUBE_REPO" smarttube
+          cd smarttube && git checkout "$SMARTTUBE_SHA"
+
+      - name: Apply OpenClaw SmartTube fork
+        run: |
+          set -e
+          chmod +x openclaw/Modes/SmartTube/fork/apply_fork.sh
+          bash openclaw/Modes/SmartTube/fork/apply_fork.sh "$PWD/smarttube" "$PWD/openclaw/Modes/SmartTube/fork"
+          echo "=== patched Package.swift ==="; sed -n '1,80p' smarttube/SmartTubeIOS/Package.swift
+
+      - name: Build SmartTubeIOS package for iOS (device)
+        run: |
+          cd smarttube/SmartTubeIOS
+          set -o pipefail
+          xcodebuild build \
+            -scheme SmartTubeIOS \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)|Compiling|warning: .*Firebase|Undefined symbols" || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log || { echo "::error::SmartTubeIOS package build failed"; exit 1; }
+
+      - name: Diagnostics (always)
+        if: always()
+        run: |
+          cd smarttube/SmartTubeIOS
+          echo "=== errors ==="; grep -E "error:" build.log 2>/dev/null | head -40 || true
+          echo "=== firebase residue? ==="; grep -rniE "firebase|crashlytics.crashlytics" Sources 2>/dev/null | head || echo "none"
