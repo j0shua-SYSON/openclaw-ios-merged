@@ -24,6 +24,16 @@ grep -q "// @main (removed for Yattee.framework)" "$CLONE/Shared/YatteeApp.swift
   || { echo "ERROR: @main neutralization did not apply"; exit 1; }
 echo "   neutralized @main in Shared/YatteeApp.swift"
 
+# 2b. Restore implicit imports lost with the bridging header. A framework can't use
+#     SWIFT_OBJC_BRIDGING_HEADER, so we drop Yattee's (iOS/BridgingHeader.h — it only pulled
+#     <ifaddrs.h> + CoreFoundation). Files that had no imports of their own and leaned on it for
+#     Foundation/ObjC now fail ("cannot find type 'NSObject' in scope"). Give them explicit imports.
+SWZ="$CLONE/Extensions/NSObject+Swizzle.swift"
+if [ -f "$SWZ" ]; then
+  perl -0pi -e 's/\A/import Foundation\nimport ObjectiveC\n\n/ unless /^import Foundation/m' "$SWZ"
+  echo "   added Foundation/ObjectiveC imports to NSObject+Swizzle.swift"
+fi
+
 # 3. CORE DATA (hard crash otherwise). NSPersistentContainer(name:) looks up the compiled
 #    Yattee.momd in Bundle.main ONLY. Embedded, Bundle.main is the HOST app (OpenClaw), which has
 #    no Yattee.momd -> the store load fails and PersistenceController's completion hits fatalError.
