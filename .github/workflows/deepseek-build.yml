@@ -8,6 +8,14 @@ name: DeepSeek Build (framework validation)
 
 on:
   workflow_dispatch:
+  # This validator is new and not yet on the default branch, so workflow_dispatch
+  # isn't registered yet. A push trigger runs from the pushed ref directly — scoped
+  # to the working branch + this mode's files so it only fires on relevant changes.
+  push:
+    branches: [utm-mode]
+    paths:
+      - "Modes/DeepSeek/**"
+      - ".github/workflows/deepseek-build.yml"
 
 permissions:
   contents: read
