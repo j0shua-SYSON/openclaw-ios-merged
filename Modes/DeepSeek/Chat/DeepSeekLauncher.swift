@@ -8,9 +8,8 @@ import UIKit
 @objc(DeepSeekLauncher)
 public final class DeepSeekLauncher: NSObject {
     @objc public static func makeRootViewController() -> UIViewController {
-        let host = UIHostingController(rootView: DeepSeekRootView())
-        let nav = UINavigationController(rootViewController: host)
-        nav.navigationBar.prefersLargeTitles = false
-        return nav
+        // The SwiftUI UI draws its own DeepSeek-style header + slide-in drawer, so no
+        // UINavigationController wrapper (that would double the top bar).
+        UIHostingController(rootView: DeepSeekRootView())
     }
 }

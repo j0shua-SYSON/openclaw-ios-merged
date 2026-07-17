@@ -6,6 +6,14 @@ struct DeepSeekError: LocalizedError {
     var errorDescription: String? { message }
 }
 
+/// One piece of a streamed assistant turn.
+enum DSStreamEvent {
+    case answer(String)        // visible answer text (append)
+    case thinking(String)      // chain-of-thought text (the "Thought for Ns" block)
+    case searchStatus(String)  // "Searching the web", "Read N web pages", …
+    case messageID(Int)        // assistant response_message_id (for threading)
+}
+
 /// A solved-once proof-of-work challenge from `create_pow_challenge` /
 /// `create_guest_challenge`.
 private struct DSChallenge {
@@ -97,7 +105,6 @@ final class DeepSeekAPI {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw DeepSeekError(message: "Unexpected server response.")
         }
-        // Envelope: { code, msg, data: { biz_code, biz_msg, biz_data } }
         if let code = obj["code"] as? Int, code != 0 {
             throw DeepSeekError(message: (obj["msg"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Server error \(code).")
         }
@@ -114,7 +121,6 @@ final class DeepSeekAPI {
     }
 
     private func parseChallenge(_ dict: [String: Any]) throws -> DSChallenge {
-        // expire_at may arrive as a number or a string.
         let expireAt: String
         if let n = dict["expire_at"] as? Int64 { expireAt = String(n) }
         else if let n = dict["expire_at"] as? Int { expireAt = String(n) }
@@ -157,22 +163,19 @@ final class DeepSeekAPI {
         let (data, _) = try await session.data(for: request("/api/v0/chat/create_pow_challenge", body: ["target_path": targetPath], token: token))
         let biz = try bizData(try json(data))
         guard let ch = biz["challenge"] as? [String: Any] else { throw DeepSeekError(message: "No PoW challenge returned.") }
-        let challenge = try parseChallenge(ch)
-        return try await solveOffMain(challenge, targetPath: targetPath)
+        return try await solveOffMain(try parseChallenge(ch), targetPath: targetPath)
     }
 
     // MARK: - Guest flow (best-effort; region/captcha-gated, may be unavailable)
 
     private func guestPowHeader(targetPath: String) async throws -> String {
         let extra = ["x-rangers-id": String(Int.random(in: 100_000_000_000_000_000...999_999_999_999_999_999))]
-        let body: [String: Any] = ["target_path": targetPath]
-        let (data, _) = try await session.data(for: request("/api/v0/users/create_guest_challenge", body: body, token: nil, extra: extra))
+        let (data, _) = try await session.data(for: request("/api/v0/users/create_guest_challenge", body: ["target_path": targetPath], token: nil, extra: extra))
         let biz = try bizData(try json(data))
         guard let ch = biz["guest_challenge"] as? [String: Any] else {
             throw DeepSeekError(message: "Guest mode is unavailable here — please sign in.")
         }
-        let challenge = try parseChallenge(ch)
-        return try await solveOffMain(challenge, targetPath: targetPath)
+        return try await solveOffMain(try parseChallenge(ch), targetPath: targetPath)
     }
 
     private func solveOffMain(_ challenge: DSChallenge, targetPath: String) async throws -> String {
@@ -186,36 +189,33 @@ final class DeepSeekAPI {
 
     // MARK: - Streaming completion
 
-    /// Streams an authenticated chat turn. Yields text fragments as they arrive.
-    /// Returns the assistant's response message id via `onMessageID` for threading.
+    /// Streams an authenticated chat turn as typed events.
     func streamAuthed(token: String, sessionId: String, parentMessageID: Int?, prompt: String,
-                      onMessageID: @escaping (Int) -> Void) -> AsyncThrowingStream<String, Error> {
+                      thinkingEnabled: Bool, searchEnabled: Bool) -> AsyncThrowingStream<DSStreamEvent, Error> {
         let path = "/api/v0/chat/completion"
         let body: [String: Any] = [
             "chat_session_id": sessionId,
             "parent_message_id": parentMessageID.map { $0 as Any } ?? NSNull(),
-            "prompt": prompt, "ref_file_ids": [], "thinking_enabled": false,
-            "search_enabled": false,
+            "prompt": prompt, "ref_file_ids": [],
+            "thinking_enabled": thinkingEnabled, "search_enabled": searchEnabled,
         ]
         return stream(path: path, body: body, token: token, powHeaderName: "X-DS-PoW-Response",
-                      powHeader: { try await self.powHeader(token: token, targetPath: path) },
-                      onMessageID: onMessageID)
+                      powHeader: { try await self.powHeader(token: token, targetPath: path) })
     }
 
     /// Best-effort guest completion via the iOS-only `/guest/chat/completion`
     /// endpoint. Throws a friendly error if guest mode is gated in this region.
-    func streamGuest(prompt: String, onMessageID: @escaping (Int) -> Void) -> AsyncThrowingStream<String, Error> {
+    func streamGuest(prompt: String, thinkingEnabled: Bool, searchEnabled: Bool) -> AsyncThrowingStream<DSStreamEvent, Error> {
         let path = "/api/v0/guest/chat/completion"
-        let body: [String: Any] = ["prompt": prompt, "ref_file_ids": [], "thinking_enabled": false,
-                                   "search_enabled": false, "os": "ios", "device_id": deviceID]
+        let body: [String: Any] = ["prompt": prompt, "ref_file_ids": [],
+                                   "thinking_enabled": thinkingEnabled, "search_enabled": searchEnabled,
+                                   "os": "ios", "device_id": deviceID]
         return stream(path: path, body: body, token: nil, powHeaderName: "X-DS-Guest-PoW-Response",
-                      powHeader: { try await self.guestPowHeader(targetPath: path) },
-                      onMessageID: onMessageID)
+                      powHeader: { try await self.guestPowHeader(targetPath: path) })
     }
 
     private func stream(path: String, body: [String: Any], token: String?, powHeaderName: String,
-                        powHeader: @escaping () async throws -> String,
-                        onMessageID: @escaping (Int) -> Void) -> AsyncThrowingStream<String, Error> {
+                        powHeader: @escaping () async throws -> String) -> AsyncThrowingStream<DSStreamEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -238,8 +238,8 @@ final class DeepSeekAPI {
                             throw DeepSeekError(message: (obj["msg"] as? String) ?? "The chat service returned an error.")
                         }
                         currentEvent = "message"
-                        if let mid = obj["response_message_id"] as? Int { onMessageID(mid) }
-                        for fragment in Self.extractContent(obj) { continuation.yield(fragment) }
+                        if let mid = obj["response_message_id"] as? Int { continuation.yield(.messageID(mid)) }
+                        for ev in Self.extractEvents(obj) { continuation.yield(ev) }
                     }
                     continuation.finish()
                 } catch {
@@ -250,21 +250,26 @@ final class DeepSeekAPI {
         }
     }
 
-    /// Pulls assistant text out of a DeepSeek SSE event. Content arrives either as
-    /// APPEND ops on a `…/content` path, or inside an initial snapshot object.
-    private static func extractContent(_ obj: [String: Any]) -> [String] {
+    /// Classifies a DeepSeek SSE event. Content arrives as APPEND ops on a
+    /// `…/content` or `…/thinking_content` path, or inside an initial snapshot.
+    private static func extractEvents(_ obj: [String: Any]) -> [DSStreamEvent] {
         if let p = obj["p"] as? String {
-            guard p.hasSuffix("content"), !p.contains("thinking") else { return [] }
-            if let v = obj["v"] as? String { return [v] }
+            if p.contains("thinking") {
+                if let v = obj["v"] as? String { return [.thinking(v)] }
+            } else if p.hasSuffix("content") {
+                if let v = obj["v"] as? String { return [.answer(v)] }
+            } else if p.contains("search") || p.contains("tool") {
+                if let v = obj["v"] as? String, !v.isEmpty { return [.searchStatus(v)] }
+            }
             return []
         }
-        // Snapshot: v is an object holding response.fragments[].content
-        if let v = obj["v"] as? [String: Any] {
-            var out: [String] = []
-            if let resp = v["response"] as? [String: Any], let frags = resp["fragments"] as? [[String: Any]] {
-                for f in frags where (f["type"] as? String) != "THINK" {
-                    if let c = f["content"] as? String, !c.isEmpty { out.append(c) }
-                }
+        // Snapshot: v is an object holding response.fragments[].content / thinking
+        if let v = obj["v"] as? [String: Any], let resp = v["response"] as? [String: Any],
+           let frags = resp["fragments"] as? [[String: Any]] {
+            var out: [DSStreamEvent] = []
+            for f in frags {
+                guard let c = f["content"] as? String, !c.isEmpty else { continue }
+                if (f["type"] as? String) == "THINK" { out.append(.thinking(c)) } else { out.append(.answer(c)) }
             }
             return out
         }
