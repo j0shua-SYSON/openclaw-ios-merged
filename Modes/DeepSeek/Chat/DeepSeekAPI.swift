@@ -227,6 +227,7 @@ final class DeepSeekAPI {
                         throw DeepSeekError(message: "Chat failed (HTTP \(http.statusCode)).")
                     }
                     var currentEvent = "message"
+                    var parser = DSStreamParser()
                     for try await line in bytes.lines {
                         if line.isEmpty { continue }
                         if line.hasPrefix("event:") { currentEvent = line.dropFirst(6).trimmingCharacters(in: .whitespaces); continue }
@@ -238,8 +239,7 @@ final class DeepSeekAPI {
                             throw DeepSeekError(message: (obj["msg"] as? String) ?? "The chat service returned an error.")
                         }
                         currentEvent = "message"
-                        if let mid = obj["response_message_id"] as? Int { continuation.yield(.messageID(mid)) }
-                        for ev in Self.extractEvents(obj) { continuation.yield(ev) }
+                        for ev in parser.process(obj) { continuation.yield(ev) }
                     }
                     continuation.finish()
                 } catch {
@@ -250,29 +250,73 @@ final class DeepSeekAPI {
         }
     }
 
-    /// Classifies a DeepSeek SSE event. Content arrives as APPEND ops on a
-    /// `…/content` or `…/thinking_content` path, or inside an initial snapshot.
-    private static func extractEvents(_ obj: [String: Any]) -> [DSStreamEvent] {
-        if let p = obj["p"] as? String {
-            if p.contains("thinking") {
-                if let v = obj["v"] as? String { return [.thinking(v)] }
-            } else if p.hasSuffix("content") {
-                if let v = obj["v"] as? String { return [.answer(v)] }
-            } else if p.contains("search") || p.contains("tool") {
-                if let v = obj["v"] as? String, !v.isEmpty { return [.searchStatus(v)] }
+}
+
+/// Stateful applier for DeepSeek's streaming JSON-patch protocol. The response is a
+/// document with `response.fragments[]`, each fragment typed THINK / TOOL_SEARCH /
+/// TOOL_OPEN / RESPONSE. Content arrives as APPEND ops on `response/fragments/-1/content`
+/// (the last fragment) — with bare `{"v":…}` ops continuing the last path and BATCH ops
+/// appending new typed fragments — so answer vs chain-of-thought vs search is
+/// distinguished only by the target fragment's type.
+private struct DSStreamParser {
+    private var fragTypes: [String] = []
+    private var lastPath = ""
+
+    mutating func process(_ obj: [String: Any]) -> [DSStreamEvent] {
+        var out: [DSStreamEvent] = []
+        if let mid = obj["response_message_id"] as? Int { out.append(.messageID(mid)) }
+        if let p = obj["p"] as? String { lastPath = p }
+        apply(path: obj["p"] as? String ?? lastPath, op: obj["o"] as? String, value: obj["v"], into: &out)
+        return out
+    }
+
+    private mutating func apply(path: String, op: String?, value: Any?, into out: inout [DSStreamEvent]) {
+        // BATCH (explicit, or a bare array-of-patches continuation)
+        if let arr = value as? [[String: Any]], arr.first?["p"] != nil, op == "BATCH" || op == nil {
+            for sub in arr {
+                let subPath = (sub["p"] as? String).map { path.isEmpty ? $0 : path + "/" + $0 } ?? path
+                apply(path: subPath, op: sub["o"] as? String, value: sub["v"], into: &out)
             }
-            return []
+            return
         }
-        // Snapshot: v is an object holding response.fragments[].content / thinking
-        if let v = obj["v"] as? [String: Any], let resp = v["response"] as? [String: Any],
+        // Full-response snapshot
+        if let dict = value as? [String: Any],
+           let resp = (dict["response"] as? [String: Any]) ?? (path.hasSuffix("response") ? dict : nil),
            let frags = resp["fragments"] as? [[String: Any]] {
-            var out: [DSStreamEvent] = []
-            for f in frags {
-                guard let c = f["content"] as? String, !c.isEmpty else { continue }
-                if (f["type"] as? String) == "THINK" { out.append(.thinking(c)) } else { out.append(.answer(c)) }
-            }
-            return out
+            fragTypes = []
+            for f in frags { appendFragment(f, into: &out) }
+            return
         }
-        return []
+        // New typed fragments appended
+        if path.hasSuffix("fragments"), let arr = value as? [[String: Any]] {
+            for f in arr { appendFragment(f, into: &out) }
+            return
+        }
+        // Content append to a fragment
+        if path.hasSuffix("content"), let idx = fragmentIndex(path), let s = value as? String {
+            emit(fragment: idx, content: s, into: &out)
+        }
+    }
+
+    private mutating func appendFragment(_ f: [String: Any], into out: inout [DSStreamEvent]) {
+        let type = f["type"] as? String ?? "RESPONSE"
+        fragTypes.append(type)
+        if type == "TOOL_SEARCH" { out.append(.searchStatus("Searching the web")) }
+        if let c = f["content"] as? String, !c.isEmpty { emit(fragment: fragTypes.count - 1, content: c, into: &out) }
+    }
+
+    private func fragmentIndex(_ path: String) -> Int? {
+        let parts = path.components(separatedBy: "/")
+        guard let fi = parts.firstIndex(of: "fragments"), fi + 1 < parts.count, let n = Int(parts[fi + 1]) else { return nil }
+        return n < 0 ? fragTypes.count + n : n
+    }
+
+    private func emit(fragment idx: Int, content: String, into out: inout [DSStreamEvent]) {
+        guard idx >= 0, idx < fragTypes.count else { return }
+        switch fragTypes[idx] {
+        case "THINK": out.append(.thinking(content))
+        case "RESPONSE": out.append(.answer(content))
+        default: break
+        }
     }
 }
