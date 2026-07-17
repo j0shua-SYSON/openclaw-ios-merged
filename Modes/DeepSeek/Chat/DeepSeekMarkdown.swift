@@ -12,11 +12,25 @@ struct DSMarkdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            ForEach(Array(Self.parse(text).enumerated()), id: \.offset) { _, block in
+            ForEach(Array(Self.parse(Self.stripCitations(text)).enumerated()), id: \.offset) { _, block in
                 render(block)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Remove DeepSeek's inline `[reference:N]` / `[citation:N]` markers that ride
+    /// along with web-search answers (the app renders them as superscript chips).
+    static func stripCitations(_ s: String) -> String {
+        guard s.contains("[reference:") || s.contains("[citation:") else { return s }
+        var out = s
+        for prefix in ["[reference:", "[citation:"] {
+            while let start = out.range(of: prefix),
+                  let end = out[start.upperBound...].firstIndex(of: "]") {
+                out.removeSubrange(start.lowerBound...end)
+            }
+        }
+        return out
     }
 
     @ViewBuilder private func render(_ block: Block) -> some View {
