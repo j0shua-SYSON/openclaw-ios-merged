@@ -201,8 +201,13 @@ private struct DSChatScreen: View {
                         }
                         .padding(.horizontal, DS.Metric.hPad)
                         .padding(.vertical, 14)
+                        .frame(maxWidth: DS.Metric.maxContentWidth)
+                        .frame(maxWidth: .infinity)
                     } else {
-                        DSWelcomeView(model: $model.model).frame(minHeight: 420)
+                        DSWelcomeView(model: $model.model)
+                            .frame(minHeight: 420)
+                            .frame(maxWidth: DS.Metric.maxContentWidth)
+                            .frame(maxWidth: .infinity)
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
@@ -215,10 +220,13 @@ private struct DSChatScreen: View {
                 Text(err).font(DS.Font.secondary).foregroundStyle(DS.Palette.error)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, DS.Metric.hPad).padding(.top, 4)
+                    .frame(maxWidth: DS.Metric.maxContentWidth)
             }
 
             DSComposer(text: $model.input, thinkOn: $model.thinkOn, searchOn: $model.searchOn,
                        isStreaming: model.isStreaming, onSend: model.send, onStop: model.stop)
+                .frame(maxWidth: DS.Metric.maxContentWidth)
+                .frame(maxWidth: .infinity)
         }
     }
 

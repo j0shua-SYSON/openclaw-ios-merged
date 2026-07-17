@@ -91,5 +91,11 @@ enum DS {
         static let inputRadius: CGFloat = 22
         static let pillRadius: CGFloat = 16
         static let hPad: CGFloat = 16
+        // iPad: the real app is the phone layout scaled up (single column, no split
+        // view). Cap + center the column so it doesn't stretch edge-to-edge on a large
+        // iPad; no effect on iPhone (screen width is already below these).
+        static let maxContentWidth: CGFloat = 900
+        static let maxAuthWidth: CGFloat = 420
+        static let maxDrawerWidth: CGFloat = 340
     }
 }

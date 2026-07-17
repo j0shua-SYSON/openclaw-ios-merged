@@ -59,6 +59,8 @@ struct DSAuthView: View {
                 Spacer(minLength: 24)
             }
             .padding(.horizontal, 24)
+            .frame(maxWidth: DS.Metric.maxAuthWidth)
+            .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
     }
@@ -142,7 +144,7 @@ struct DSDrawerOverlay: View {
                     .onTapGesture { withAnimation(.easeOut(duration: 0.25)) { model.drawerOpen = false } }
                     .transition(.opacity)
                 DSDrawer(model: model)
-                    .frame(width: UIScreen.main.bounds.width * 0.84)
+                    .frame(width: min(UIScreen.main.bounds.width * 0.84, DS.Metric.maxDrawerWidth))
                     .frame(maxHeight: .infinity)
                     .background(DS.Palette.bg)
                     .transition(.move(edge: .leading))
