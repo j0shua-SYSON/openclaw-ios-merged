@@ -33,7 +33,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
         AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
         AppMode(id: "yattee", title: "Yattee", subtitle: "YouTube via Invidious · native player", systemImage: "play.circle.fill"),
-        AppMode(id: "deepseek", title: "DeepSeek", subtitle: "Reconstructed 2.2.2 client · offline shell + pseudocode", systemImage: "curlybraces"),
+        AppMode(id: "deepseek", title: "DeepSeek", subtitle: "Chat with DeepSeek · sign in or guest", systemImage: "brain"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
 }
@@ -331,14 +331,17 @@ struct YatteeModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
-/// Hosts the DeepSeek reconstruction's real UIKit shell (DSRootViewController's
-/// Chat / Pseudocode / About tabs) inside the mode overlay. `DeepSeekMode.framework`
-/// is the buildable reconstruction of the DeepSeek 2.2.2 iOS client (Modes/DeepSeek):
-/// an offline shell over the 6,006 recovered Ghidra function bodies compiled into the
-/// binary. DeepSeekLauncher wraps the root VC in a UINavigationController (the
-/// Pseudocode tab pushes a detail view). Reached via the ObjC `DeepSeekLauncher`
-/// forward-declared in OpenClaw's bridging header — no Swift `import`, so the
-/// catalog's C++ stays out of OpenClaw's module scan.
+/// Hosts a native DeepSeek chat client (SwiftUI) inside the mode overlay.
+/// `DeepSeekMode.framework` (Modes/DeepSeek/Chat) talks to chat.deepseek.com:
+/// sign in with a DeepSeek account (or best-effort guest), solve DeepSeek's
+/// DeepSeekHashV1 proof-of-work per message (Keccak-f[1600], rounds 1..23), and
+/// stream the reply over SSE. It ships alongside the buildable 2.2.2 reconstruction
+/// (the recovered Ghidra bodies compiled in). Reached via the @objc `DeepSeekLauncher`
+/// forward-declared in OpenClaw's bridging header — no Swift `import`, so DeepSeekMode's
+/// module (and the reconstruction catalog's C++) stays out of OpenClaw's module scan.
+///
+/// Guest chat is region/captcha-gated by DeepSeek and may be unavailable; the UI then
+/// prompts sign-in.
 struct DeepSeekModeView: UIViewControllerRepresentable {
     func makeUIViewController(context _: Context) -> UIViewController {
         DeepSeekLauncher.makeRootViewController()

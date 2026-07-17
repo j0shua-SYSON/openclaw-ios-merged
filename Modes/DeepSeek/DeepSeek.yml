@@ -1,14 +1,15 @@
 # XcodeGen spec for the DeepSeek mode, built STANDALONE first (deepseek-build.yml),
 # then included into the main OpenClaw project and embedded (project.yml).
 #
-# Unlike the other modes there is no upstream fork to convert: DeepSeek ships no
-# open source, so the mode is the buildable reconstruction of the 2.2.2 iOS client
-# (a pure UIKit/ObjC++ shell over the 6,006 recovered Ghidra bodies, compiled into
-# the binary as string data). It has no Swift module and no third-party deps — only
-# system frameworks — so this is the simplest embed: an in-project framework target
-# that compiles during the normal OpenClaw build (the FoliumMode pattern), with no
-# prebuilt-vendoring / CI cache step. Source paths are relative to this file's
-# directory (Modes/DeepSeek); $(SRCROOT) build-vars resolve at repo root.
+# DeepSeek ships no open source, so this mode is built from scratch: a native
+# SwiftUI chat client for chat.deepseek.com (Chat/) — login/session/PoW/SSE — that
+# solves DeepSeek's DeepSeekHashV1 proof-of-work (Keccak-f[1600] rounds 1..23) in
+# pure Swift. It rides alongside the buildable reconstruction of the 2.2.2 client
+# (App/ + catalog/ — the recovered Ghidra bodies compiled in as data). Only system
+# frameworks, no third-party deps, so it's an in-project framework target compiled
+# during the normal OpenClaw build (the FoliumMode pattern), no prebuilt/CI-cache
+# step. Source paths are relative to this file's dir (Modes/DeepSeek); $(SRCROOT)
+# build-vars resolve at repo root.
 
 name: DeepSeekMode
 options:
@@ -22,10 +23,18 @@ targets:
     type: framework
     platform: iOS
     sources:
-      # The launcher + reconstructed root VC. main.m / DSAppDelegate are omitted
-      # on purpose (no @main / UIApplicationMain / own UIWindow in a framework).
+      # Native chat client (Swift): PoW solver, API/SSE, chat UI, @objc launcher.
+      - path: Chat
+      # Reconstruction shell (ObjC++). headerVisibility: project keeps DSRootViewController.h
+      # out of the framework umbrella so the mixed Swift module never tries to parse it (and,
+      # transitively, the C++ catalog header) — the Swift is self-contained for now.
       - path: App
+        headerVisibility: project
+      # The recovered-body catalog. Its header stays out of the umbrella (project) — it's a
+      # C++ header (<string>/<vector>); only the .cpp/.mm implementations include it, via the
+      # HEADER_SEARCH_PATHS below, not the module.
       - path: catalog/include
+        headerVisibility: project
       - path: catalog/src
       # 62 generated TUs (~11 MB) holding the recovered bodies as raw-string data;
       # the only real symbols are recovered::generated::kChunkNNN[] arrays.
@@ -34,8 +43,11 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        # Load every ObjC class (DeepSeekLauncher/DSRootViewController) so OpenClaw
-        # can resolve the forward-declared launcher from the ObjC runtime at link time.
+        # Swift 5 language mode: this is a self-contained client; opting out of Swift 6
+        # strict concurrency keeps the async networking/UI code simple (as SmartTube does).
+        SWIFT_VERSION: "5.0"
+        # Load every ObjC/@objc class (the Swift DeepSeekLauncher, DSRootViewController) so
+        # OpenClaw can resolve the forward-declared launcher from the ObjC runtime at link time.
         OTHER_LDFLAGS: "-ObjC"
         CLANG_CXX_LANGUAGE_STANDARD: "gnu++17"
         CLANG_ENABLE_OBJC_ARC: YES
