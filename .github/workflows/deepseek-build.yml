@@ -77,7 +77,13 @@ jobs:
           [ -n "$FW" ] || { echo "::error::DeepSeekMode.framework (with binary) not found"; exit 1; }
           echo "=== otool -L $FW/DeepSeekMode ==="
           otool -L "$FW/DeepSeekMode"
-          if otool -L "$FW/DeepSeekMode" | grep -qE "@rpath|@executable_path"; then
+          # tail -n +2 drops the "<path>:" header; grep -v drops the framework's own
+          # install name (LC_ID_DYLIB — every dynamic framework self-references as
+          # @rpath/Self.framework/Self). Whatever @rpath/@executable_path deps remain
+          # would be non-system libraries that must be embedded — there should be none.
+          if otool -L "$FW/DeepSeekMode" | tail -n +2 \
+               | grep -v "@rpath/DeepSeekMode.framework/DeepSeekMode" \
+               | grep -qE "@rpath|@executable_path"; then
             echo "::error::DeepSeekMode has non-system @rpath deps — expected system libraries only"
             exit 1
           fi
