@@ -33,6 +33,7 @@ struct AppMode: Identifiable, Hashable, Sendable {
         AppMode(id: "utm", title: "UTM SE", subtitle: "Virtual machines (QEMU, JIT-less)", systemImage: "desktopcomputer"),
         AppMode(id: "smarttube", title: "YouTube", subtitle: "SmartTube · ad-free · SponsorBlock · up to 8K", systemImage: "play.rectangle.fill"),
         AppMode(id: "yattee", title: "Yattee", subtitle: "YouTube via Invidious · native player", systemImage: "play.circle.fill"),
+        AppMode(id: "deepseek", title: "DeepSeek", subtitle: "Reconstructed 2.2.2 client · offline shell + pseudocode", systemImage: "curlybraces"),
         AppMode(id: "dolphin", title: "DolphiniOS", subtitle: "GameCube · Wii", systemImage: "gamecontroller.fill"),
     ]
 }
@@ -330,6 +331,22 @@ struct YatteeModeView: UIViewControllerRepresentable {
     func updateUIViewController(_: UIViewController, context _: Context) {}
 }
 
+/// Hosts the DeepSeek reconstruction's real UIKit shell (DSRootViewController's
+/// Chat / Pseudocode / About tabs) inside the mode overlay. `DeepSeekMode.framework`
+/// is the buildable reconstruction of the DeepSeek 2.2.2 iOS client (Modes/DeepSeek):
+/// an offline shell over the 6,006 recovered Ghidra function bodies compiled into the
+/// binary. DeepSeekLauncher wraps the root VC in a UINavigationController (the
+/// Pseudocode tab pushes a detail view). Reached via the ObjC `DeepSeekLauncher`
+/// forward-declared in OpenClaw's bridging header — no Swift `import`, so the
+/// catalog's C++ stays out of OpenClaw's module scan.
+struct DeepSeekModeView: UIViewControllerRepresentable {
+    func makeUIViewController(context _: Context) -> UIViewController {
+        DeepSeekLauncher.makeRootViewController()
+    }
+
+    func updateUIViewController(_: UIViewController, context _: Context) {}
+}
+
 struct ModeContainerView: View {
     let mode: AppMode
     var onExit: () -> Void
@@ -365,6 +382,11 @@ struct ModeContainerView: View {
         case "yattee":
             // Real Yattee (YouTube via Invidious). Same gesture returns to OpenClaw.
             YatteeModeView()
+                .ignoresSafeArea()
+        case "deepseek":
+            // DeepSeek 2.2.2 reconstruction (offline shell + pseudocode browser).
+            // Same 5-tap/3-finger gesture returns to OpenClaw.
+            DeepSeekModeView()
                 .ignoresSafeArea()
         default:
             self.placeholderBody

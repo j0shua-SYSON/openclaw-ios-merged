@@ -54,3 +54,15 @@
 @interface YatteeLauncher : NSObject
 + (UIViewController * _Nonnull)makeRootViewController;
 @end
+
+// DeepSeek mode — same forward-declared pattern. DeepSeekMode.framework is the
+// buildable reconstruction of the DeepSeek 2.2.2 iOS client (Modes/DeepSeek): a
+// pure UIKit/ObjC++ shell (offline chat + a searchable browser over the 6,006
+// recovered Ghidra function bodies compiled into the binary as data). It has no
+// Swift module and no third-party deps, but we still forward-declare the launcher
+// (not `import DeepSeekMode`) so OpenClaw's Swift never drags the catalog's C++
+// (<string>/<vector>) into its module scan. Resolved from the embedded framework
+// at link time via the ObjC runtime. See Modes/DeepSeek/App/DeepSeekLauncher.h.
+@interface DeepSeekLauncher : NSObject
++ (UIViewController * _Nonnull)makeRootViewController;
+@end

@@ -1,6 +1,7 @@
 name: OpenClaw
 include:
   - Modes/Folium/Folium.yml
+  - Modes/DeepSeek/DeepSeek.yml
 options:
   bundleIdPrefix: ai.openclawfoundation
   deploymentTarget:
@@ -172,6 +173,16 @@ targets:
       # translations ship inside it (the fork points both lookups at the framework bundle, since
       # Bundle.main is OpenClaw once embedded). Built into Vendor/YatteePrebuilt by CI.
       - framework: Vendor/YatteePrebuilt/Yattee.framework
+        embed: true
+      # DeepSeek mode — the buildable reconstruction of the DeepSeek 2.2.2 iOS client as an
+      # in-project XcodeGen framework target (Modes/DeepSeek/DeepSeek.yml, included above),
+      # NOT a prebuilt/forked framework: it's pure UIKit/ObjC++ with no third-party deps and
+      # no Swift module, so it compiles during this build (the FoliumMode pattern). OpenClaw
+      # reaches it through the ObjC DeepSeekLauncher forward-declared in the bridging header
+      # (no `import DeepSeekMode`), resolved from the embedded framework at link time. Its
+      # only deps are system libraries (otool -L verified by deepseek-build.yml), so nothing
+      # else needs embedding.
+      - target: DeepSeekMode
         embed: true
       # SmartTube (YouTube) mode — vendored Swift package (Vendor/SmartTube). OpenClaw imports
       # both products (SmartTubeLauncher.swift builds RootView's environment). After the Firebase
