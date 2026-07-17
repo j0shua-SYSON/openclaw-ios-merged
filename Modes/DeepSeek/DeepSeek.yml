@@ -1,0 +1,54 @@
+# XcodeGen spec for the DeepSeek mode, built STANDALONE first (deepseek-build.yml),
+# then included into the main OpenClaw project and embedded (project.yml).
+#
+# Unlike the other modes there is no upstream fork to convert: DeepSeek ships no
+# open source, so the mode is the buildable reconstruction of the 2.2.2 iOS client
+# (a pure UIKit/ObjC++ shell over the 6,006 recovered Ghidra bodies, compiled into
+# the binary as string data). It has no Swift module and no third-party deps — only
+# system frameworks — so this is the simplest embed: an in-project framework target
+# that compiles during the normal OpenClaw build (the FoliumMode pattern), with no
+# prebuilt-vendoring / CI cache step. Source paths are relative to this file's
+# directory (Modes/DeepSeek); $(SRCROOT) build-vars resolve at repo root.
+
+name: DeepSeekMode
+options:
+  bundleIdPrefix: ai.openclawfoundation.deepseek
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+targets:
+  DeepSeekMode:
+    type: framework
+    platform: iOS
+    sources:
+      # The launcher + reconstructed root VC. main.m / DSAppDelegate are omitted
+      # on purpose (no @main / UIApplicationMain / own UIWindow in a framework).
+      - path: App
+      - path: catalog/include
+      - path: catalog/src
+      # 62 generated TUs (~11 MB) holding the recovered bodies as raw-string data;
+      # the only real symbols are recovered::generated::kChunkNNN[] arrays.
+      - path: catalog/generated
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        # Load every ObjC class (DeepSeekLauncher/DSRootViewController) so OpenClaw
+        # can resolve the forward-declared launcher from the ObjC runtime at link time.
+        OTHER_LDFLAGS: "-ObjC"
+        CLANG_CXX_LANGUAGE_STANDARD: "gnu++17"
+        CLANG_ENABLE_OBJC_ARC: YES
+        # The generated TUs and DSRootViewController.mm do #include "recovered_catalog.hpp".
+        HEADER_SEARCH_PATHS:
+          - $(SRCROOT)/Modes/DeepSeek/catalog/include
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: Foundation.framework
+      - sdk: CoreGraphics.framework
+
+schemes:
+  DeepSeekMode:
+    build:
+      targets:
+        DeepSeekMode: all

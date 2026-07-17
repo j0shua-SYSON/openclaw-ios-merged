@@ -1,0 +1,76 @@
+name: DeepSeek Build (framework validation)
+
+# Builds DeepSeekMode.framework STANDALONE from Modes/DeepSeek/DeepSeek.yml before
+# wiring it into the main OpenClaw app. DeepSeekMode is the buildable reconstruction
+# of the DeepSeek 2.2.2 iOS client (pure UIKit/ObjC++ + the recovered-body catalog),
+# with no third-party deps — so this validator just has to compile the 62 generated
+# TUs + the UI and confirm the framework links against system libraries only.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deepseek:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          set -e
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$latest" ] && sudo xcode-select -s "$latest"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate DeepSeekMode project
+        run: |
+          set -e
+          # Generate at repo root so SRCROOT matches the merged OpenClaw build
+          # (HEADER_SEARCH_PATHS use $(SRCROOT)/Modes/DeepSeek/...).
+          xcodegen generate --spec Modes/DeepSeek/DeepSeek.yml --project .
+          echo "=== generated ==="; ls -d *.xcodeproj
+
+      - name: Build DeepSeekMode.framework (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project DeepSeekMode.xcodeproj \
+            -scheme DeepSeekMode \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+          rc=${PIPESTATUS[0]}
+          echo "::group::error summary"
+          grep -nE "error:|fatal error|BUILD (SUCCEEDED|FAILED)" build.log | tail -60 || true
+          echo "::endgroup::"
+          exit $rc
+
+      # §5 of the embedding handoff: always print otool -L on the framework binary.
+      # It decides the packaging story. Expectation here: system libraries only
+      # (UIKit/Foundation/CoreGraphics + libc++/libobjc) — nothing to embed, unlike
+      # UTM's ~63 @rpath deps. A hard failure if any @rpath dep sneaks in.
+      - name: Inspect framework dependencies (otool -L)
+        run: |
+          set -e
+          FW=$(find build/Build/Products -type d -name "DeepSeekMode.framework" \
+                | while read d; do [ -f "$d/DeepSeekMode" ] && echo "$d"; done | head -1)
+          [ -n "$FW" ] || { echo "::error::DeepSeekMode.framework (with binary) not found"; exit 1; }
+          echo "=== otool -L $FW/DeepSeekMode ==="
+          otool -L "$FW/DeepSeekMode"
+          if otool -L "$FW/DeepSeekMode" | grep -qE "@rpath|@executable_path"; then
+            echo "::error::DeepSeekMode has non-system @rpath deps — expected system libraries only"
+            exit 1
+          fi
+          echo "OK: self-contained (system libraries only)."
