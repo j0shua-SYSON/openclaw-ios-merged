@@ -41,30 +41,6 @@ IPAs there** (they're ~285MB each).
 **Working style:** drive autonomously end-to-end. Don't stop to ask "want me to continue?" Ship,
 verify, report. Ask only when genuinely blocked on a decision that's the user's to make.
 
-## 3. The legal line — read before "embed X"
-
-Several requests have been to embed **closed-source, proprietary apps** (DeepSeek's IPA), and later
-to build reverse-engineered reconstructions of one (`deepseek_reverse`,
-`deepseek_buildable_reconstruction`, `deepseek_api_wrapper`).
-
-**These were declined, repeatedly, and should stay declined.** Compiling and shipping decompiled
-proprietary code is reproducing copyrighted software. That doesn't change because:
-
-- a third party did the decompiling rather than us,
-- the reconstruction is "buildable" or wrapped in new project scaffolding,
-- it's labeled "AUTHORIZED", "EDUCATIONAL", or "PRIVATE RESEARCH" (the user has asserted all three).
-
-The user has pushed back on this more than once. Expect it to come up again; hold the line politely
-and without re-litigating it every message.
-
-**The legitimate alternative, already offered and still open:** an *original, independently written*
-client against DeepSeek's public guest endpoints (our own code — DeepSeek's guest API + the
-`DeepSeekHashV1` PoW / `X-DS-PoW-Response` challenge). That route is fine. It was never greenlit;
-if the user says go, build it fresh. Do not seed it from the decompiled sources.
-
-Distinguish this from the modes that ARE fine: Delta, Folium, Feather, iSH, UTM, Yattee and
-SmartTube are all open-source upstreams built from source. That's the whole difference.
-
 ## 4. Architecture — and why
 
 Every mode follows one shape. Deviate only with a reason.
@@ -194,7 +170,7 @@ merely transient.** `Modes/Yattee/fork/apply_fork.sh` §5 has the full write-up 
   scheme.
 - **Ghidra** (`F:\JOSHUA_1st_2021\projects\ios_bounty_research\...`): spaces in filenames split
   args; paths starting with `.` are rejected; `.py` postScripts need PyGhidra (use Java); analysis
-  can exceed 2400s. (Only relevant to analysis, never to shipping — see §3.)
+  can exceed 2400s.
 
 ### 6.5 UI / touch handling
 
@@ -252,14 +228,12 @@ one stack.
 | Yattee | Just fixed the §6.2 deadlock; OTA shipped; **awaiting device verification.** |
 | UTM SE | Builds, runs, both crashes fixed — but **flagged off** (`-f include_utm=false`) for build speed. Returns in the final build. **Owes the §6.5 picker fix.** |
 | DolphiniOS | Never started. |
-| DeepSeek | See §3. Blocked on principle, not on effort. |
 
 ## 9. Open work
 
 1. **Verify Yattee on device.** If it launches but feeds/playback are empty, that's the seeded
    Invidious instance, not the embed (see §10).
 2. **UTM file picker → the Feather method** (§6.5), then the final `-f include_utm=true` build.
-3. **DeepSeek** — only the original guest-API client, only if greenlit (§3).
 4. DolphiniOS.
 
 ## 10. Yattee's structural fragility — flag it, don't "fix" it
